@@ -1,11 +1,6 @@
 open-interpreter
 tavily
 ollama
+yacana
 
 client = TavilyClient("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")
-
-pip install langchain
-pip install -U langchain-community
-pip install sentence-transformers
- # pip install faiss-gpu
-pip install pypdf
