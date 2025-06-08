@@ -1,6 +1,0 @@
-open-interpreter
-tavily
-ollama
-yacana
-
-client = TavilyClient("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")

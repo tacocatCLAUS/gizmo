@@ -1,7 +1,11 @@
 from yacana import Task, OllamaAgent
 from pathlib import Path
+from ScrapeSearchEngine.ScrapeSearchEngine import Duckduckgo
+from tavily import TavilyClient
+from ollama import chat
+from ollama import ChatResponse
 
-# Read from system.txt
+
 system_prompt_path = Path("system.txt")
 system_prompt = system_prompt_path.read_text()
 
@@ -11,17 +15,63 @@ skills = skills_prompt_path.read_text()
 
 # Combine both texts
 combined_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
+userAgent = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15')
+ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "mistral:7b", system_prompt=combined_prompt)
+client = TavilyClient("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")
 
-ollama_agent = OllamaAgent("Gizmo", "mistral:7b", system_prompt=combined_prompt)
+stream_state = {"stream": "true"}
+final_request = ""
+api_state = {"api": "true"}
 
-# Create a task to tell a joke
-message = Task("Tell me joke but in reverse.", ollama_agent).solve()
+def streaming(chunk: str):
+    if "し" in chunk:
+        stream_state["stream"] = "false"
+        return
+    else:
+        if stream_state["stream"] == "true":
+            print(f"{chunk}", end="", flush=True)
+        else:
+            return
+        
+def web(content):
+    print("searching web...")
+    print(f"Web search: {content}")
+    # Split the content on the pipe symbol and strip any extra whitespace
+    parts = [part.strip() for part in content.split("|")]
+    # Assign variables based on their position
+    search_1 = parts[1]
+    primary_search = parts[2]
+    search_2 = parts[3]
+    if api_state["api"] == "true":
+        links_1 = ''
+        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Only include a summary: {client.search(query=primary_search, max_results=2,include_answer="basic")}'
+        print('ʕ•ᴥ•ʔ I am fetching the api...')
+        response: ChatResponse = chat(model='gemma3:1b', messages=[
+        {
+            'role': 'user',
+            'content': summarize
+        },
+        ])
+        links_3 = response['message']['content']
+        print('ʕ•ᴥ•ʔ I am summarizing...')
+    else:
+        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Only include a summary: {Duckduckgo(search_1, userAgent)}'
+        print('ʕ•ᴥ•ʔ I am scraping the web...')
+        response: ChatResponse = chat(model='gemma3:1b', messages=[
+        {
+            'role': 'user',
+            'content': summarize
+        },
+        ])
+        links_1 = response['message']['content']
+        print('ʕ•ᴥ•ʔ I am summarizing...')
+        links_3 = ''
+    final_request = f"し original question: {request} use this data: {links_1} {links_3}"
+    message = Task(final_request, ollama_agent, streaming_callback=streaming).solve()
 
-print(message.content)
-# ? SAD BOOK MATH THE WAS WHY
-
-# Chain a second task to tell the same joke but in uppercase
-message = Task("Tell it again but ALL CAPS LIKE YOU ARE SCREAMING !", ollama_agent).solve()
-
-print(message.content)
-# !PROBLEMS MANY TOO HAD IT BECAUSE
+# original question
+# message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
+# second question
+request = "what is the latest news on the new iphone"
+message = Task(request, ollama_agent, streaming_callback=streaming).solve()
+web(message.content)
