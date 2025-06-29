@@ -4,3 +4,9 @@ termcolor
 scrape-search-engine
 requests[socks]>=2.22.0
 beautifulsoup4>=4.10.0
+pypdf
+langchain
+chromadb # Vector storage
+pytest
+boto3
+tqdm
