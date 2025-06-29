@@ -18,7 +18,7 @@ CHROMA_PATH = "chroma"
 stream_state = {"stream": "true"}
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
-
+[File]
 {context}
 
 ---
@@ -29,7 +29,7 @@ Answer the question based on the above context: {question}
 def streaming(chunk: str):
     if "し" in chunk:
         stream_state["stream"] = "false"
-        print('[SYSTEM] web request received...')
+        manager('[SYSTEM] web request received...')
         return
     else:
         if stream_state["stream"] == "true":
