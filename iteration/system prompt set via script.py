@@ -4,20 +4,19 @@ from ScrapeSearchEngine.ScrapeSearchEngine import Duckduckgo
 from tavily import TavilyClient
 from ollama import chat
 from ollama import ChatResponse
-from termcolor import colored
 
 
-# system_prompt_path = Path("system.txt")
-# system_prompt = system_prompt_path.read_text()
+system_prompt_path = Path("system.txt")
+system_prompt = system_prompt_path.read_text()
 
 # Read from skills.txt
-# skills_prompt_path = Path("skills.txt")
-# skills = skills_prompt_path.read_text()
+skills_prompt_path = Path("skills.txt")
+skills = skills_prompt_path.read_text()
 
 # Combine both texts
-# combined_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
+combined_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
 userAgent = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15')
-ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
+ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "mistral:7b", system_prompt=combined_prompt)
 client = TavilyClient("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")
 
 stream_state = {"stream": "true"}
@@ -27,7 +26,7 @@ api_state = {"api": "true"}
 def streaming(chunk: str):
     if "し" in chunk:
         stream_state["stream"] = "false"
-        print('[SYSTEM] web request received...')
+        print('web request received...')
         return
     else:
         if stream_state["stream"] == "true":
@@ -37,7 +36,7 @@ def streaming(chunk: str):
         
 def web(content):
     print("searching web...")
-    print(f"[SYSTEM] Web search: {content}, light_grey")
+    print(f"Web search: {content}")
     # Split the content on the pipe symbol and strip any extra whitespace
     parts = [part.strip() for part in content.split("|")]
     # Assign variables based on their position
@@ -46,7 +45,7 @@ def web(content):
     search_2 = parts[3]
     if api_state["api"] == "true":
         links_1 = ''
-        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary:{client.search(query=primary_search, max_results=2,include_answer="basic")}'
+        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Only include a summary: {client.search(query=primary_search, max_results=2,include_answer="basic")}'
         print('ʕ•ᴥ•ʔ I am fetching the api...')
         response: ChatResponse = chat(model='gemma3:1b', messages=[
         {
@@ -57,7 +56,7 @@ def web(content):
         links_3 = response['message']['content']
         print('ʕ•ᴥ•ʔ I am summarizing...')
     else:
-        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary: {Duckduckgo(search_1, userAgent)}'
+        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Only include a summary: {Duckduckgo(search_1, userAgent)}'
         print('ʕ•ᴥ•ʔ I am scraping the web...')
         response: ChatResponse = chat(model='gemma3:1b', messages=[
         {
@@ -68,12 +67,11 @@ def web(content):
         links_1 = response['message']['content']
         print('ʕ•ᴥ•ʔ I am summarizing...')
         links_3 = ''
-    print(f'{links_1}{links_3}')
-    # final_request = f"し original question: {request} use this data: {links_1} {links_3}"
-    # message = Task(final_request, ollama_agent, streaming_callback=streaming).solve() --- llm considers the summary of the web search as the original question very grueling and annoying
+    final_request = f"し original question: {request} use this data: {links_1} {links_3}"
+    message = Task(final_request, ollama_agent, streaming_callback=streaming).solve()
 
 # original question
-message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
+# message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
 # second question
 request = "what is the latest news on the new iphone"
 message = Task(request, ollama_agent, streaming_callback=streaming).solve()
