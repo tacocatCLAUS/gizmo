@@ -10,10 +10,10 @@ BASE_MODEL="gemma3:1b"
 
 # Ensure required files exist
 for file in "$SYSTEM_FILE" "$SKILLS_FILE"; do
-  if [[ ! -f "$file" ]]; then
-    echo "Error: '$file' not found."
-    exit 1
-  fi
+    if [ ! -f "$file" ]; then
+        echo "Error: '$file' not found."
+        exit 1
+    fi
 done
 
 # Generate the Modelfile by combining prompts
@@ -25,9 +25,9 @@ PARAMETER temperature 0
 # PARAMETER num_ctx 32768
 
 SYSTEM """
-$(<"$SYSTEM_FILE")
+$(cat "$SYSTEM_FILE")
 
-$(<"$SKILLS_FILE")
+$(cat "$SKILLS_FILE")
 """
 EOF
 

@@ -36,41 +36,42 @@ def streaming(chunk: str):
             return
         
 def web(content):
-    print("searching web...")
-    print(f"[SYSTEM] Web search: {content}, light_grey")
-    # Split the content on the pipe symbol and strip any extra whitespace
-    parts = [part.strip() for part in content.split("|")]
-    # Assign variables based on their position
-    search_1 = parts[1]
-    primary_search = parts[2]
-    search_2 = parts[3]
-    if api_state["api"] == "true":
-        links_1 = ''
-        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary:{client.search(query=primary_search, max_results=2,include_answer="basic")}'
-        print('ʕ•ᴥ•ʔ I am fetching the api...')
-        response: ChatResponse = chat(model='gemma3:1b', messages=[
-        {
-            'role': 'user',
-            'content': summarize
-        },
-        ])
-        links_3 = response['message']['content']
-        print('ʕ•ᴥ•ʔ I am summarizing...')
-    else:
-        summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary: {Duckduckgo(search_1, userAgent)}'
-        print('ʕ•ᴥ•ʔ I am scraping the web...')
-        response: ChatResponse = chat(model='gemma3:1b', messages=[
-        {
-            'role': 'user',
-            'content': summarize
-        },
-        ])
+    if stream_state["stream"] = "false"
+        print("searching web...")
+        print(f"[SYSTEM] Web search: {content}, light_grey")
+        # Split the content on the pipe symbol and strip any extra whitespace
+        parts = [part.strip() for part in content.split("|")]
+        # Assign variables based on their position
+        search_1 = parts[1]
+        primary_search = parts[2]
+        search_2 = parts[3]
+        if api_state["api"] == "true":
+            links_1 = ''
+            summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary:{client.search(query=primary_search, max_results=2,include_answer="basic")}'
+            print('ʕ•ᴥ•ʔ I am fetching the api...')
+            response: ChatResponse = chat(model='gemma3:1b', messages=[
+            {
+                'role': 'user',
+                'content': summarize
+            },
+            ])
+            links_3 = response['message']['content']
+            print('ʕ•ᴥ•ʔ I am summarizing...')
+        else:
+            summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary: {Duckduckgo(search_1, userAgent)}'
+            print('ʕ•ᴥ•ʔ I am scraping the web...')
+            response: ChatResponse = chat(model='gemma3:1b', messages=[
+            {
+                'role': 'user',
+             'content': summarize
+         },
+          ])
         links_1 = response['message']['content']
         print('ʕ•ᴥ•ʔ I am summarizing...')
         links_3 = ''
-    print(f'{links_1}{links_3}')
-    # final_request = f"し original question: {request} use this data: {links_1} {links_3}"
-    # message = Task(final_request, ollama_agent, streaming_callback=streaming).solve() --- llm considers the summary of the web search as the original question very grueling and annoying
+        print(f'{links_1}{links_3}')
+        # final_request = f"し original question: {request} use this data: {links_1} {links_3}"
+        # message = Task(final_request, ollama_agent, streaming_callback=streaming).solve() --- llm considers the summary of the web search as the original question very grueling and annoying
 
 # original question
 message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
