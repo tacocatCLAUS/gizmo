@@ -36,7 +36,7 @@ def streaming(chunk: str):
             return
         
 def web(content):
-    if stream_state["stream"] = "false"
+    if stream_state["stream"] == "false":
         print("searching web...")
         print(f"[SYSTEM] Web search: {content}, light_grey")
         # Split the content on the pipe symbol and strip any extra whitespace
@@ -72,10 +72,12 @@ def web(content):
         print(f'{links_1}{links_3}')
         # final_request = f"し original question: {request} use this data: {links_1} {links_3}"
         # message = Task(final_request, ollama_agent, streaming_callback=streaming).solve() --- llm considers the summary of the web search as the original question very grueling and annoying
+    else:
+        return
 
 # original question
 message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
 # second question
-request = "what is the latest news on the new iphone"
+request = "hi"
 message = Task(request, ollama_agent, streaming_callback=streaming).solve()
 web(message.content)

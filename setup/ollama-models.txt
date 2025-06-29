@@ -1,0 +1,2 @@
+Gizmo: Main LLM customized based off off gemma3:1b with modelfile.
+Gemma3.1b: Quick paced data summarization agent.
