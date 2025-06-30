@@ -45,6 +45,10 @@ def web(content):
         manager(f"[SYSTEM] Web search: {content}")
         # Split the content on the pipe symbol and strip any extra whitespace
         parts = [part.strip() for part in content.split("|")]
+        if len(parts) < 4:
+            manager("[SYSTEM] Not enough parts in content for web search. Skipping.")
+            cprint('Error. Please try again.', 'red', attrs=['bold'])
+            return
         # Assign variables based on their position
         search_1 = parts[1]
         primary_search = parts[2]
@@ -71,7 +75,6 @@ def web(content):
          },
           ])
         links_1 = response['message']['content']
-        print('ʕ•ᴥ•ʔ I am summarizing...')
         links_3 = ''
         print(f'{links_1}{links_3}')
         stream_state["stream"] = "true"      
@@ -87,8 +90,7 @@ message = Task("I have no questions. introduce yourself. dont mention your skill
 while True:
     print('\n')
     cprint('(•ᴗ•) You', (12, 110, 176), attrs=["bold"])
-    date = datetime.datetime.now()
-    request = routines.input() + date.strftime('%x')
+    request = routines.input()
     if request.strip().lower() == "bye":
         break
     print('\n')
