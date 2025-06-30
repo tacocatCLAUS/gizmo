@@ -6,18 +6,22 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
-from get_embedding_function import get_embedding_function
+from .get_embedding_function import get_embedding_function
 from langchain_chroma import Chroma
 
 CHROMA_PATH = "chroma"
-DATA_PATH = "data"
+# Dynamic path detection - works when called from project root or RAG directory
+if os.path.exists("RAG/data"):
+    DATA_PATH = "RAG/data"  # Called from project root
+else:
+    DATA_PATH = "data"      # Called from RAG directory
 
 for root, dirs, files in os.walk(DATA_PATH):
     for file in files:
         if file.lower().endswith(".pdf"):
             print("Found PDF:", os.path.join(root, file))
 
-def main():
+def parse():
     # Check if the database should be cleared (using the --reset flag).
     parser = argparse.ArgumentParser()
     parser.add_argument("--reset", action="store_true", help="Reset the database.")
@@ -141,5 +145,5 @@ def clear_database():
         shutil.rmtree(CHROMA_PATH)
 
 if __name__ == "__main__":
-    main()
+    parse()
     # If this file is run directly, populate the database.

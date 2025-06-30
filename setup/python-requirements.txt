@@ -11,3 +11,4 @@ pytest
 boto3
 tqdm
 survey
+shututil
