@@ -4,7 +4,11 @@ from ScrapeSearchEngine.ScrapeSearchEngine import Duckduckgo
 from tavily import TavilyClient
 from ollama import chat
 from ollama import ChatResponse
+from termcolor import colored, cprint
 from log import manager
+from survey import routines
+import datetime
+
 manager()
 
 # system_prompt_path = Path("system.txt")
@@ -38,7 +42,7 @@ def streaming(chunk: str):
 def web(content):
     if stream_state["stream"] == "false":
         print("searching web...")
-        manager(f"[SYSTEM] Web search: {content}, light_grey")
+        manager(f"[SYSTEM] Web search: {content}")
         # Split the content on the pipe symbol and strip any extra whitespace
         parts = [part.strip() for part in content.split("|")]
         # Assign variables based on their position
@@ -70,14 +74,24 @@ def web(content):
         print('ʕ•ᴥ•ʔ I am summarizing...')
         links_3 = ''
         print(f'{links_1}{links_3}')
+        stream_state["stream"] = "true"      
         # final_request = f"し original question: {request} use this data: {links_1} {links_3}"
         # message = Task(final_request, ollama_agent, streaming_callback=streaming).solve() --- llm considers the summary of the web search as the original question very grueling and annoying
     else:
         return
 
 # original question
+cprint('ʕ•ᴥ•ʔฅ Gizmo', (227, 118, 41), attrs=["bold"])
 message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
 # second question
-request = "hi"
-message = Task(request, ollama_agent, streaming_callback=streaming).solve()
-web(message.content)
+while True:
+    print('\n')
+    cprint('(•ᴗ•) You', (12, 110, 176), attrs=["bold"])
+    date = datetime.datetime.now()
+    request = routines.input() + date.strftime('%x')
+    if request.strip().lower() == "bye":
+        break
+    print('\n')
+    cprint('ʕ•ᴥ•ʔ Gizmo', (227, 118, 41), attrs=["bold"])
+    message = Task(request, ollama_agent, streaming_callback=streaming).solve()
+    web(message.content)

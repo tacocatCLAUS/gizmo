@@ -10,3 +10,4 @@ chromadb # Vector storage
 pytest
 boto3
 tqdm
+survey
