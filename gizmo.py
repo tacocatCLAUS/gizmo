@@ -51,7 +51,7 @@ def db_clear():
     if db_clear == True:
         clear_database()
     else: 
-        cprint('ʕ•ᴥ•ʔ Persistent memory is on.', (227, 118, 41), attrs=["bold"])
+        cprint('ʕ•ᴥ•ʔ Persistent memory is on.', 'yellow', attrs=["bold"])
 
 def streaming(chunk: str):
     if "し" in chunk:
@@ -126,16 +126,16 @@ def query_rag_gizmo(query_text: str):
 
 # original question
 db_clear()
-cprint('ʕ•ᴥ•ʔฅ Gizmo', (227, 118, 41), attrs=["bold"])
+cprint('ʕ•ᴥ•ʔฅ Gizmo', 'yellow', attrs=["bold"])
 message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
 # second question
 while True:
     print('\n')
-    cprint('(•ᴗ•) You', (12, 110, 176), attrs=["bold"])
+    cprint('(•ᴗ•) You', 'blue', attrs=["bold"])
     request = routines.input()
     if request.strip().lower() == "bye":
         break
-    addfile = routines.input('🗎 (Y/N): ')
+    addfile = routines.input('📄 (Y/N): ')
     if addfile == 'Y':
         file_path = select_file()
         if file_path:
@@ -151,7 +151,7 @@ while True:
             cprint("Error.", 'red')
             manager("[SYSTEM] Error. No path added by user/library.")
     print('\n')
-    cprint('ʕ•ᴥ•ʔ Gizmo', (227, 118, 41), attrs=["bold"])
+    cprint('ʕ•ᴥ•ʔ Gizmo', 'yellow', attrs=["bold"])
     if db_query:
         # Use the database query logic for every question
         message = query_rag_gizmo(request)
