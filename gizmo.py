@@ -1,4 +1,4 @@
-from yacana import Task, OllamaAgent
+from yacana import Task, OllamaAgent, OpenAiAgent
 from pathlib import Path
 from ScrapeSearchEngine.ScrapeSearchEngine import Duckduckgo
 from tavily import TavilyClient
@@ -18,22 +18,25 @@ import os
 
 manager()
 
-# system_prompt_path = Path("system.txt")
-# system_prompt = system_prompt_path.read_text()
+system_prompt_path = Path("setup/system.txt")
+system_prompt = system_prompt_path.read_text()
 
 # Read from skills.txt
-# skills_prompt_path = Path("skills.txt")
-# skills = skills_prompt_path.read_text()
+skills_prompt_path = Path("setup/skills.txt")
+skills = skills_prompt_path.read_text()
 
 # Combine both texts
-# combined_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
+system_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
 userAgent = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15')
+openai_api_key = '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'
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
+openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", "gpt-3.5-turbo", system_prompt=system_prompt, api_token=openai_api_key)   
 client = TavilyClient("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")
 db_clear = True
 stream_state = {"stream": "true"}
 final_request = ""
 db_query = False
+openai = False
 api_state = {"api": "true"}
 addfile = 'N'
 CHROMA_PATH = "chroma"
