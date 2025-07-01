@@ -33,10 +33,11 @@ ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", "gpt-3.5-turbo", system_prompt=system_prompt, api_token=openai_api_key)   
 client = TavilyClient("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")
 db_clear = True
+agent = ollama_agent
 stream_state = {"stream": "true"}
 final_request = ""
 db_query = False
-openai = False
+openai = True
 api_state = {"api": "true"}
 addfile = 'N'
 CHROMA_PATH = "chroma"
@@ -55,6 +56,13 @@ def db_clear():
         clear_database()
     else: 
         cprint('ʕ•ᴥ•ʔ Persistent memory is on.', 'yellow', attrs=["bold"])
+
+def openai():
+    if openai == True:
+        agent = openai_agent
+        manager('[SYSTEM] OpenAI agent selected...')
+    else :
+        agent = ollama_agent
 
 def streaming(chunk: str):
     if "し" in chunk:
@@ -111,26 +119,31 @@ def web(content):
     else:
         return
     
-def query_rag_gizmo(query_text: str):
-    embedding_function = get_embedding_function()
+def query_rag(query_text):
+    # Prepare the DB.
+    embedding_function = get_embedding_function(openai)
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+
+    # Search the DB.
     results = db.similarity_search_with_score(query_text, k=5)
+
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
-    ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
+    # print(prompt)
     response_text = Task(prompt, ollama_agent, streaming_callback=streaming).solve()
     sources = [doc.metadata.get("id", None) for doc, _score in results]
     formatted_response = f"\nSources: {sources}"
+    print(response_text)
     print(formatted_response)
-    return response_text
+    return  # response_text
     
 
 
 # original question
 db_clear()
 cprint('ʕ•ᴥ•ʔฅ Gizmo', 'yellow', attrs=["bold"])
-message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", ollama_agent, streaming_callback=streaming).solve()
+message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", agent, streaming_callback=streaming).solve()
 # second question
 while True:
     print('\n')
@@ -142,8 +155,10 @@ while True:
     if addfile == 'Y':
         file_path = select_file()
         if file_path:
-            # Expand the tilde to the full home directory path
-            dest_dir = os.path.expanduser("~/RAG/data/")
+            # Use the rag folder in the current directory
+            dest_dir = os.path.join(os.getcwd(), "RAG", "data")
+            # Create the destination directory if it doesn't exist
+            os.makedirs(dest_dir, exist_ok=True)
             shutil.copy(file_path, dest_dir)
             parse()
             filename = Path(file_path).name
@@ -157,10 +172,10 @@ while True:
     cprint('ʕ•ᴥ•ʔ Gizmo', 'yellow', attrs=["bold"])
     if db_query:
         # Use the database query logic for every question
-        message = query_rag_gizmo(request)
+        message = query_rag(request)
         web(message.content)
     else:
         # Use your normal logic
-        message = Task(request, ollama_agent, streaming_callback=streaming).solve()
+        message = Task(request, agent, streaming_callback=streaming).solve()
         web(message.content)
 

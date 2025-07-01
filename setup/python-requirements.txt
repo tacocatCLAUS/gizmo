@@ -14,3 +14,4 @@ survey
 langchain-chroma
 langchain-ollama
 langchain-aws
+langchain-huggingface

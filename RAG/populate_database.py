@@ -92,7 +92,7 @@ def split_markdown(documents: list[Document]):
 
 def add_to_chroma(chunks: list[Document]):
     db = Chroma(
-        persist_directory=CHROMA_PATH, embedding_function=get_embedding_function()
+        persist_directory=CHROMA_PATH, embedding_function=get_embedding_function(True)
     )
 
     chunks_with_ids = calculate_chunk_ids(chunks)
