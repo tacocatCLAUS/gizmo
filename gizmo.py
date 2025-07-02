@@ -66,7 +66,7 @@ def manager(message=None):
         if message is not None:
             print(message)
 
-def tavily():
+def tavily(): # This function is used to set the API to Tavily or DuckDuckGo.
     if tavily_api == True:
         api_state = {"api": "true"}
         manager('[SYSTEM] Using Tavily API.')
@@ -92,7 +92,7 @@ def streaming(chunk: str): # This function is used to stream the response from t
         else:
             return
         
-def web(content):
+def web(content): # This function is used to perform a web search if the agent requests it.
     if stream_state["stream"] == "false":
         print("searching web...")
         manager(f"[SYSTEM] Web search: {content}")
