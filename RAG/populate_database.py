@@ -1,5 +1,7 @@
-import argparse
 import os
+os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
+
+import argparse
 import shutil
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.document_loaders import PyPDFDirectoryLoader
@@ -9,7 +11,10 @@ from langchain.schema.document import Document
 from .get_embedding_function import get_embedding_function
 from langchain_chroma import Chroma
 
-CHROMA_PATH = "chroma"
+if os.path.exists("RAG/chroma"):
+    CHROMA_PATH = "RAG/chroma"  # Called from project root
+else:
+    CHROMA_PATH = "chroma"      # Called from RAG directory
 # Dynamic path detection - works when called from project root or RAG directory
 if os.path.exists("RAG/data"):
     DATA_PATH = "RAG/data"  # Called from project root
@@ -110,8 +115,6 @@ def add_to_chroma(chunks: list[Document]):
         print(f"👉 Adding new documents: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
         db.add_documents(new_chunks, ids=new_chunk_ids)
-    else:
-        print("✅ No new documents to add")
 
 def calculate_chunk_ids(chunks):
     # This will create IDs like "data/monopoly.pdf:6:2"
@@ -143,6 +146,10 @@ def calculate_chunk_ids(chunks):
 def clear_database():
     if os.path.exists(CHROMA_PATH):
         shutil.rmtree(CHROMA_PATH)
+        os.makedirs(CHROMA_PATH, exist_ok=True)
+        if os.path.exists(DATA_PATH):
+            shutil.rmtree(DATA_PATH)
+            os.makedirs(DATA_PATH, exist_ok=True)
 
 if __name__ == "__main__":
     parse()

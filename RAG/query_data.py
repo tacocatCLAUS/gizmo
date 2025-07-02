@@ -1,3 +1,6 @@
+import os
+os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
+
 import argparse
 from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate

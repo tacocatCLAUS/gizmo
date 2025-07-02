@@ -1,4 +1,7 @@
-from yacana import Task, OllamaAgent, OpenAiAgent
+import os
+os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
+
+from yacana import Task, OllamaAgent, OpenAiAgent, LoggerManager
 from pathlib import Path
 from ScrapeSearchEngine.ScrapeSearchEngine import Duckduckgo
 from tavily import TavilyClient
@@ -6,41 +9,40 @@ from ollama import chat
 from ollama import ChatResponse
 from langchain.prompts import ChatPromptTemplate
 from termcolor import colored, cprint
-from log import manager
 from survey import routines
 from langchain_chroma import Chroma
 from RAG.populate_database import parse, clear_database
 from filepicker import select_file
 from RAG.get_embedding_function import get_embedding_function
 import shutil
-import os
 
+# Configuration
+openai = True # Use OpenAI instead of Ollama model.
+devmode = False  # Set to True for development mode, False for production
+db_clear = True  # Set to True to clear the database on startup, False to keep it persistent
+tavily_api = True  # Set to True to use Tavily API, False to use DuckDuckGo
 
-manager()
-
-system_prompt_path = Path("setup/system.txt")
-system_prompt = system_prompt_path.read_text()
-
-# Read from skills.txt
-skills_prompt_path = Path("setup/skills.txt")
-skills = skills_prompt_path.read_text()
-
-# Combine both texts
-system_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
+# API's etc.
 userAgent = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15')
 openai_api_key = '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'
+tavily_api_key = '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'
+
+# Set Variables.
+system_prompt_path = Path("setup/system.txt")
+system_prompt = system_prompt_path.read_text()
+skills_prompt_path = Path("setup/skills.txt")
+skills = skills_prompt_path.read_text()
+system_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", "gpt-3.5-turbo", system_prompt=system_prompt, api_token=openai_api_key)   
-client = TavilyClient("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")
-db_clear = True
 agent = ollama_agent
+client = TavilyClient(tavily_api_key)
 stream_state = {"stream": "true"}
 final_request = ""
 db_query = False
-openai = True
 api_state = {"api": "true"}
 addfile = 'N'
-CHROMA_PATH = "chroma"
+CHROMA_PATH = "RAG/chroma"
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
 [File]
@@ -51,20 +53,35 @@ Answer the question based only on the following context:
 Answer the question based on the above context: {question}
 """
 
-def db_clear():
+def dbclear():
     if db_clear == True:
         clear_database()
     else: 
         cprint('ʕ•ᴥ•ʔ Persistent memory is on.', 'yellow', attrs=["bold"])
 
-def openai():
+def manager(message=None):
+    if devmode == False:
+        LoggerManager.set_log_level(None)
+    else:
+        if message is not None:
+            print(message)
+
+def tavily():
+    if tavily_api == True:
+        api_state = {"api": "true"}
+        manager('[SYSTEM] Using Tavily API.')
+    else:
+        api_state = {"api": "false"}
+        manager('[SYSTEM] Using DuckDuckGo instead.')
+
+def openai(): # This function is used to set the agent to OpenAI.
     if openai == True:
         agent = openai_agent
         manager('[SYSTEM] OpenAI agent selected...')
     else :
         agent = ollama_agent
 
-def streaming(chunk: str):
+def streaming(chunk: str): # This function is used to stream the response from the agent. And stop if the agent performs a web request.
     if "し" in chunk:
         stream_state["stream"] = "false"
         manager('[SYSTEM] web request received...')
@@ -119,29 +136,27 @@ def web(content):
     else:
         return
     
-def query_rag(query_text):
+def query_rag(request):
     # Prepare the DB.
     embedding_function = get_embedding_function(openai)
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
 
     # Search the DB.
-    results = db.similarity_search_with_score(query_text, k=5)
+    results = db.similarity_search_with_score(request, k=5)
 
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt = prompt_template.format(context=context_text, question=query_text)
+    prompt = prompt_template.format(context=context_text, question=request)
     # print(prompt)
-    response_text = Task(prompt, ollama_agent, streaming_callback=streaming).solve()
+    response_text = Task(prompt, agent, streaming_callback=streaming).solve()
     sources = [doc.metadata.get("id", None) for doc, _score in results]
     formatted_response = f"\nSources: {sources}"
-    print(response_text)
     print(formatted_response)
-    return  # response_text
-    
-
+    return response_text
 
 # original question
-db_clear()
+dbclear()
+manager()
 cprint('ʕ•ᴥ•ʔฅ Gizmo', 'yellow', attrs=["bold"])
 message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", agent, streaming_callback=streaming).solve()
 # second question
@@ -154,6 +169,7 @@ while True:
     addfile = routines.input('📄 (Y/N): ')
     if addfile == 'Y':
         file_path = select_file()
+        db_query = True # Set db_query to True if a file is added
         if file_path:
             # Use the rag folder in the current directory
             dest_dir = os.path.join(os.getcwd(), "RAG", "data")
@@ -164,7 +180,6 @@ while True:
             filename = Path(file_path).name
             print(f"ʕ•ᴥ•ʔ I processed {filename}")
             addfile = 'N'  # Reset addfile to 'N' after processing  
-            db_query = True 
         else:
             cprint("Error.", 'red')
             manager("[SYSTEM] Error. No path added by user/library.")
