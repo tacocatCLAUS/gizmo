@@ -11,6 +11,20 @@ from langchain.schema.document import Document
 from .get_embedding_function import get_embedding_function
 from langchain_chroma import Chroma
 
+devmode = False  # Set to True for development mode, False for production
+
+def manager(message=None):
+    """
+    If devmode is False, set the log level to None (no logs).
+    If devmode is True, print the given message if it is not None.
+    """
+    if devmode == False:
+        from yacana import LoggerManager
+        LoggerManager.set_log_level(None)
+    else:
+        if message is not None:
+            print(message)
+
 if os.path.exists("RAG/chroma"):
     CHROMA_PATH = "RAG/chroma"  # Called from project root
 else:
@@ -24,7 +38,7 @@ else:
 for root, dirs, files in os.walk(DATA_PATH):
     for file in files:
         if file.lower().endswith(".pdf"):
-            print("Found PDF:", os.path.join(root, file))
+            manager("[SYSTEM]Found PDF in data directory:", os.path.join(root, file))
 
 def parse():
     # Check if the database should be cleared (using the --reset flag).
@@ -54,7 +68,7 @@ def load_pdf():
     # Use PyPDFDirectoryLoader directly on the data directory
     document_loader = PyPDFDirectoryLoader(DATA_PATH)
     docs = document_loader.load()
-    print(f"Loaded {len(docs)} PDF documents")
+    manager(f"[SYSTEM] Loaded {len(docs)} PDF documents")
     return docs
 
 def load_txt():
@@ -73,7 +87,7 @@ def split_pdfs(documents: list[Document]):
         is_separator_regex=False,
     )
     chunks = text_splitter.split_documents(documents)
-    print(f"Split into {len(chunks)} PDF chunks")
+    manager(f"[SYSTEM] Split into {len(chunks)} PDF chunks")
     return chunks
 
 def split_txt(documents: list[Document]):
@@ -104,7 +118,7 @@ def add_to_chroma(chunks: list[Document]):
 
     existing_items = db.get(include=[])  # IDs are always included by default
     existing_ids = set(existing_items["ids"])
-    print(f"Number of existing documents in DB: {len(existing_ids)}")
+    manager(f"[SYSTEM] Number of existing documents in DB: {len(existing_ids)}")
 
     new_chunks = []
     for chunk in chunks_with_ids:
@@ -112,7 +126,7 @@ def add_to_chroma(chunks: list[Document]):
             new_chunks.append(chunk)
 
     if len(new_chunks):
-        print(f"👉 Adding new documents: {len(new_chunks)}")
+        manager(f"[SYSTEM] Adding new chunks: {len(new_chunks)}")
         new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
         db.add_documents(new_chunks, ids=new_chunk_ids)
 

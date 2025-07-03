@@ -1,5 +1,6 @@
 import os
 os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 from yacana import Task, OllamaAgent, OpenAiAgent, LoggerManager
 from pathlib import Path
@@ -12,7 +13,7 @@ from termcolor import colored, cprint
 from survey import routines
 from langchain_chroma import Chroma
 from RAG.populate_database import parse, clear_database
-from filepicker import select_file
+from Libraries.filepicker import select_file
 from RAG.get_embedding_function import get_embedding_function
 import shutil
 
