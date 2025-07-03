@@ -60,13 +60,12 @@ def dbclear():
     else: 
         cprint('ʕ•ᴥ•ʔ Persistent memory is on.', 'yellow', attrs=["bold"])
 
-def manager(message=None):
+def manager(message=None, pos_var=None):
     if devmode == False:
         LoggerManager.set_log_level(None)
     else:
         if message is not None:
-            print(message)
-
+            print(message + pos_var)
 def tavily(): # This function is used to set the API to Tavily or DuckDuckGo.
     if tavily_api == True:
         api_state = {"api": "true"}
