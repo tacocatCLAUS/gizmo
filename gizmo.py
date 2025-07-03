@@ -152,7 +152,8 @@ def query_rag(request):
     response_text = Task(prompt, agent, streaming_callback=streaming).solve()
     sources = [doc.metadata.get("id", None) for doc, _score in results]
     formatted_response = f"\nSources: {sources}"
-    print(formatted_response)
+    if stream_state["stream"] == "true":
+        print(formatted_response)
     return response_text
 
 # original question
