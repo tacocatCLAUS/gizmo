@@ -13,7 +13,7 @@ from langchain_chroma import Chroma
 
 devmode = False  # Set to True for development mode, False for production
 
-def manager(message=None):
+def manager(message=None, pos_var=None):
     """
     If devmode is False, set the log level to None (no logs).
     If devmode is True, print the given message if it is not None.
@@ -23,7 +23,7 @@ def manager(message=None):
         LoggerManager.set_log_level(None)
     else:
         if message is not None:
-            print(message)
+            print(message + pos_var)
 
 if os.path.exists("RAG/chroma"):
     CHROMA_PATH = "RAG/chroma"  # Called from project root
