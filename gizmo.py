@@ -19,6 +19,7 @@ import shutil
 
 # Configuration
 openai = True # Use OpenAI instead of Ollama model.
+openai_model = "gpt-3.5-turbo"  # Set the OpenAI model to use.
 devmode = False  # Set to True for development mode, False for production
 db_clear = True  # Set to True to clear the database on startup, False to keep it persistent
 tavily_api = True  # Set to True to use Tavily API, False to use DuckDuckGo
@@ -35,7 +36,7 @@ skills_prompt_path = Path("setup/skills.txt")
 skills = skills_prompt_path.read_text()
 system_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
-openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", "gpt-3.5-turbo", system_prompt=system_prompt, api_token=openai_api_key)   
+openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", openai_model, system_prompt=system_prompt, api_token=openai_api_key)   
 agent = ollama_agent
 client = TavilyClient(tavily_api_key)
 stream_state = {"stream": "true"}
