@@ -18,7 +18,7 @@ from RAG.get_embedding_function import get_embedding_function
 import shutil
 
 # Configuration
-openai = True # Use OpenAI instead of Ollama model.
+openai = False # Use OpenAI instead of Ollama model.
 openai_model = "gpt-3.5-turbo"  # Set the OpenAI model to use.
 devmode = False  # Set to True for development mode, False for production
 db_clear = True  # Set to True to clear the database on startup, False to keep it persistent
@@ -31,9 +31,9 @@ tavily_api_key = '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'
 
 # Set Variables.
 system_prompt_path = Path("setup/system.txt")
-system_prompt = system_prompt_path.read_text()
+system_prompt = system_prompt_path.read_text(encoding="utf-8")
 skills_prompt_path = Path("setup/skills.txt")
-skills = skills_prompt_path.read_text()
+skills = skills_prompt_path.read_text(encoding="utf-8")
 system_prompt = system_prompt + "\n\n" + skills  # Optional spacing between the two
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", openai_model, system_prompt=system_prompt, api_token=openai_api_key)   

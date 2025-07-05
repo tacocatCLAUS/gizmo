@@ -36,7 +36,3 @@ echo "Generated '$MODELFILE'"
 # Build/create the custom model
 ollama create "$MODEL_NAME" --file "$MODELFILE"
 echo "Model '$MODEL_NAME' created or updated."
-
-# Run the model interactively
-echo "Launching '$MODEL_NAME'. Press Ctrl+C to exit."
-ollama run "$MODEL_NAME"
