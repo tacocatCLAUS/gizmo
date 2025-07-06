@@ -66,7 +66,10 @@ def manager(message=None, pos_var=None):
         LoggerManager.set_log_level(None)
     else:
         if message is not None:
-            print(message + pos_var)
+            if pos_var is not None:
+                print(message + pos_var)
+            else:
+                print(message)
 def tavily(): # This function is used to set the API to Tavily or DuckDuckGo.
     if tavily_api == True:
         api_state = {"api": "true"}
@@ -99,10 +102,9 @@ def web(content): # This function is used to perform a web search if the agent r
         manager(f"[SYSTEM] Web search: {content}")
         # Split the content on the pipe symbol and strip any extra whitespace
         parts = [part.strip() for part in content.split("|")]
-        if len(parts) < 4:
-            manager("[SYSTEM] Not enough parts in content for web search. Skipping.")
-            cprint('Error. Please try again.', 'red', attrs=['bold'])
-            return
+        # Pad the parts list to ensure at least 4 elements
+        while len(parts) < 4:
+            parts.append("")
         # Assign variables based on their position
         search_1 = parts[1]
         primary_search = parts[2]
@@ -110,12 +112,13 @@ def web(content): # This function is used to perform a web search if the agent r
         if api_state["api"] == "true":
             links_1 = ''
             summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary:{client.search(query=primary_search, max_results=2,include_answer="basic")}'
+
             print('ʕ•ᴥ•ʔ I am fetching the api...')
             response: ChatResponse = chat(model='gemma3:1b', messages=[
-            {
-                'role': 'user',
-                'content': summarize
-            },
+                {
+                    'role': 'user',
+                    'content': summarize
+                },
             ])
             links_3 = response['message']['content']
             print('ʕ•ᴥ•ʔ I am summarizing...')
@@ -123,17 +126,16 @@ def web(content): # This function is used to perform a web search if the agent r
             summarize = f'Sumarrize this data and make it breif while still containing the most information you can. Dont mention anything about you summarizing only give the summary. Only include a summary: {Duckduckgo(search_1, userAgent)}'
             print('ʕ•ᴥ•ʔ I am scraping the web...')
             response: ChatResponse = chat(model='gemma3:1b', messages=[
-            {
-                'role': 'user',
-             'content': summarize
-         },
-          ])
-        links_1 = response['message']['content']
-        links_3 = ''
+                {
+                    'role': 'user',
+                    'content': summarize
+                },
+            ])
+            links_1 = response['message']['content']
+            links_3 = ''
+            print('ʕ•ᴥ•ʔ I am summarizing...')
         print(f'{links_1}{links_3}')
-        stream_state["stream"] = "true"      
-        # final_request = f"し original question: {request} use this data: {links_1} {links_3}"
-        # message = Task(final_request, ollama_agent, streaming_callback=streaming).solve() --- llm considers the summary of the web search as the original question very grueling and annoying
+        stream_state["stream"] = "true"
     else:
         return
     
