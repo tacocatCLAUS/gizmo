@@ -66,7 +66,10 @@ def manager(message=None, pos_var=None):
         LoggerManager.set_log_level(None)
     else:
         if message is not None:
-            print(message + pos_var)
+            if pos_var is not None:
+                print(message + pos_var)
+            else:
+                print(message)
 def tavily(): # This function is used to set the API to Tavily or DuckDuckGo.
     if tavily_api == True:
         api_state = {"api": "true"}
