@@ -6,7 +6,7 @@ SYSTEM_FILE="system.txt"
 SKILLS_FILE="skills.txt"
 MODELFILE="Modelfile"
 MODEL_NAME="gizmo"
-BASE_MODEL="gemma3:1b"
+BASE_MODEL="wizardlm2:7b"
 
 # Ensure required files exist
 for file in "$SYSTEM_FILE" "$SKILLS_FILE"; do

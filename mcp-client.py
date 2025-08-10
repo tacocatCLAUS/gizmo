@@ -184,7 +184,7 @@ class OllamaMCP:
 async def main():
     server_parameters = StdioServerParameters(
         command="python",
-        args=["mcp-server-simple.py"],
+        args=["mcp-server.py"],
         cwd=str(Path.cwd())
     )
 
