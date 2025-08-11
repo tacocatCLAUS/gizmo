@@ -42,26 +42,6 @@ def safe_request(url, timeout=10):
 async def list_tools() -> list[Tool]:
     """List all available tools in one consolidated server."""
     return [
-        # Web Search Tools
-        Tool(
-            name="web_search",
-            description="Search the web using DuckDuckGo and return results with snippets",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Search query to find information on the web"
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 5, max: 10)",
-                        "default": 5
-                    }
-                },
-                "required": ["query"]
-            }
-        ),
         Tool(
             name="fetch_webpage",
             description="Fetch and extract text content from a specific webpage URL",

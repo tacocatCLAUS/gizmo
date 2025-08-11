@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "local-server": {
+      "command": "python",
+      "args": ["mcp-server.py"]
+    },
+    "mcp-compass": {
+      "command": "npx",
+      "args": ["-y", "@liuyoshio/mcp-compass"]
+    },
+    "web-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
