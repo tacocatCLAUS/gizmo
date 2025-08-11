@@ -3,13 +3,12 @@ import asyncio
 import logging
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import Tool, TextContent, Resource, Prompt
 import requests
 from bs4 import BeautifulSoup
 import json
 from urllib.parse import quote_plus, urlparse
 import time
-from duckduckgo_search import DDGS
 import pytz
 
 # Set up logging
@@ -170,39 +169,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle all tool calls in one place."""
     
     try:
-        if name == "web_search":
-            query = arguments.get("query", "")
-            max_results = min(arguments.get("max_results", 5), 10)
-            
-            if not query:
-                return [TextContent(type="text", text="Error: Search query is required")]
-            
-            logger.info(f"Searching for: {query}")
-            
-            try:
-                with DDGS() as ddgs:
-                    results = list(ddgs.text(query, max_results=max_results))
-                
-                if not results:
-                    return [TextContent(type="text", text=f"No results found for query: {query}")]
-                
-                formatted_results = [f"🔍 Web Search Results for: {query}\n" + "=" * 50]
-                
-                for i, result in enumerate(results, 1):
-                    title = result.get('title', 'No title')
-                    url = result.get('href', 'No URL')
-                    snippet = result.get('body', 'No description available')
-                    
-                    formatted_results.append(f"\n{i}. **{title}**")
-                    formatted_results.append(f"   URL: {url}")
-                    formatted_results.append(f"   {clean_text(snippet)[:200]}...")
-                
-                return [TextContent(type="text", text="\n".join(formatted_results))]
-                
-            except Exception as e:
-                return [TextContent(type="text", text=f"Search error: {str(e)} - Try again in a moment.")]
-            
-        elif name == "fetch_webpage":
+        if name == "fetch_webpage":
             url = arguments.get("url", "")
             max_chars = arguments.get("max_chars", 2000)
             
@@ -359,6 +326,16 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         error_msg = f"Tool '{name}' failed: {str(e)}"
         logger.error(error_msg)
         return [TextContent(type="text", text=error_msg)]
+
+@server.list_resources()
+async def list_resources() -> list[Resource]:
+    """List available resources (currently none)."""
+    return []
+
+@server.list_prompts()
+async def list_prompts() -> list[Prompt]:
+    """List available prompts (currently none)."""
+    return []
 
 async def main():
     """Run the consolidated MCP server."""

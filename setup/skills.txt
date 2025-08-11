@@ -23,6 +23,7 @@ Available MCP Tools:
 - `calculate` - Perform mathematical calculations
 - `get_current_time` - Get current date/time
 - `run_command` - Execute system commands (use carefully)
+          
 
 🛑 Important MCP Rules:
 - Use MCP tools when you need real-time, current, or external information
