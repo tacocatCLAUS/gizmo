@@ -38,7 +38,9 @@ openai_api_key = 'sk-proj-EOnCJYqhteSbVIYe7DTPao2Un3WO2AAOtKNvOoZSk4ZZlG801KFTcP
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", openai_model, system_prompt=system_prompt, api_token=openai_api_key)
 agent = ollama_agent
+
 stream_state = {"stream": "true"}
+
 db_query = False
 addfile = 'N'
 CHROMA_PATH = "RAG/chroma"
@@ -248,29 +250,29 @@ def set_agent():
     agent = openai_agent if openai else ollama_agent
 
 def streaming_callback(chunk: str):
-    """Streaming callback that detects tool calls and pauses streaming"""
+    """Streaming callback that detects tool calls and stops streaming"""
     
     manager(f"🔧 [DEBUG] Streaming callback received chunk: {repr(chunk[:50])}...")
     
     # Check for tool call pattern
-    if "⚡️" in chunk:
+    if "⚡️" or "⚡" in chunk:
         stream_state["stream"] = "false"
         manager(f"\n🔧 [Tool Call Detected - Processing...]")
         manager(f"🔧 [DEBUG] Tool call detected in chunk: {repr(chunk)}")
-        return
+        # Don't print this chunk or any future chunks
+        return chunk
     
-    # Only print if streaming is active
+    # Only print if streaming is still active
     if stream_state["stream"] == "true":
-        print(f"{chunk}", end="", flush=True)
+        print(chunk, end="", flush=True)
     else:
-        manager(f"🔧 [DEBUG] Streaming paused, not printing: {repr(chunk[:30])}...")
+        manager(f"🔧 [DEBUG] Streaming stopped, not printing: {repr(chunk[:30])}...")
     
     return chunk
 
 def incorporate_tool_results(original_request="", partial_response="", tool_result="Tool Failed. Just tell me that and suggest alternatives if you can."):
     """Continue the conversation with tool results incorporated"""
     
-    stream_state = {"stream": "true"}
     manager(f"\n🔧 [Tool Complete - Resuming Stream...]")
     
     continuation_prompt = f"""The user asked: {original_request}
@@ -281,7 +283,12 @@ Tool result: {tool_result}
 
 Continue your response naturally, incorporating this tool result. Don't repeat what you already said, just continue from where you left off with the new information."""
     
-    Task(continuation_prompt, agent, streaming_callback=streaming_callback).solve()
+    # Simple callback that just prints - no streaming control needed for continuation
+    def continuation_callback(chunk: str):
+        print(chunk, end="", flush=True)
+        return chunk
+    
+    Task(continuation_prompt, agent, streaming_callback=continuation_callback).solve()
 
 def query_rag(request):
     embedding_function = get_embedding_function(openai)
@@ -313,12 +320,12 @@ def handle_tool_execution(response_content, mcp_manager, original_request):
         content_str = str(response_content)
     
     # Check if there's a tool call in the final response even if streaming didn't detect it
-    if "⚡️" in content_str and not stream_state["stream"] == "false":
+    if "⚡️" in content_str and stream_state["stream"] == "true":
         manager(f"🔧 [DEBUG] Found ⚡️ in final response, forcing tool execution")
-        stream_state["stream"] == "false"
+        stream_state["stream"] = "false"
     
-    if not mcp_manager or not stream_state["stream"] == "false":
-        manager(f"🔧 [DEBUG] Skipping tool execution - mcp_manager: {mcp_manager is not None}, paused: {stream_state['stream'] == 'false'}")
+    if not mcp_manager or stream_state["stream"] == "true":
+        manager(f"🔧 [DEBUG] Skipping tool execution - mcp_manager: {mcp_manager is not None}, stream stopped: {stream_state['stream'] == 'false'}")
         return
     
     try:
@@ -330,8 +337,7 @@ def handle_tool_execution(response_content, mcp_manager, original_request):
             manager(f"🔧 Result: {result}")
             incorporate_tool_results(original_request, content_str, str(result))
         else:
-            manager(f"🔧 [DEBUG] No tool found in content, resuming stream")
-            stream_state["stream"] == "true"
+            manager(f"🔧 [DEBUG] No tool found in content")
     except Exception as e:
         manager(f"🔧 Tool execution failed: {str(e)}")
         manager(f"🔧 [DEBUG] Exception: {e}")
@@ -339,7 +345,7 @@ def handle_tool_execution(response_content, mcp_manager, original_request):
 
 def parse_tool_call(content: str):
     """Parse tool call syntax like: ⚡️tool_name({...json...})"""
-    manager(f"🔧 [DEBUG] Parsing content: {repr(content)}")
+    manager(f"🔧 [DEBUG] Parsing content for tool calls...")
     pattern = r"⚡️(\w+)\s*\((\{.*?\})\)"
     match = re.search(pattern, content, re.DOTALL)
     if match:
