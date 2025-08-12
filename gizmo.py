@@ -27,7 +27,7 @@ import re
 # Configuration
 openai = False
 openai_model = "gpt-3.5-turbo"
-devmode = True
+devmode = False
 db_clear = True
 use_mcp = True
 
@@ -38,8 +38,7 @@ openai_api_key = 'sk-proj-EOnCJYqhteSbVIYe7DTPao2Un3WO2AAOtKNvOoZSk4ZZlG801KFTcP
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", openai_model, system_prompt=system_prompt, api_token=openai_api_key)
 agent = ollama_agent
-stream_state = {"stream": "active"}
-final_request = ""
+stream_state = {"stream": "true"}
 db_query = False
 addfile = 'N'
 CHROMA_PATH = "RAG/chroma"
@@ -248,29 +247,41 @@ def set_agent():
     global agent
     agent = openai_agent if openai else ollama_agent
 
-def streaming(chunk: str):
-    # Add debug output to see what's being detected
+def streaming_callback(chunk: str):
+    """Streaming callback that detects tool calls and pauses streaming"""
+    
+    manager(f"🔧 [DEBUG] Streaming callback received chunk: {repr(chunk[:50])}...")
+    
+    # Check for tool call pattern
     if "⚡️" in chunk:
-        stream_state["stream"] = "paused"
-        manager(f"\n🔧 [Tool Call Detected - Processing...]", flush=True)
-        manager(f"🔧 [DEBUG] Detected chunk: {repr(chunk)}")  # Debug line
-        return chunk
-    if stream_state.get("stream", "active") == "active":
+        stream_state["stream"] = "false"
+        manager(f"\n🔧 [Tool Call Detected - Processing...]")
+        manager(f"🔧 [DEBUG] Tool call detected in chunk: {repr(chunk)}")
+        return
+    
+    # Only print if streaming is active
+    if stream_state["stream"] == "true":
         print(f"{chunk}", end="", flush=True)
+    else:
+        manager(f"🔧 [DEBUG] Streaming paused, not printing: {repr(chunk[:30])}...")
+    
     return chunk
 
-def detect_mcp_call(chunk: str) -> bool:
-    # Add debug output
-    has_emoji = "⚡️" in chunk
-    if has_emoji:
-        manager(f"🔧 [DEBUG] MCP call detected in: {repr(chunk)}")
-    return has_emoji
+def incorporate_tool_results(original_request="", partial_response="", tool_result="Tool Failed. Just tell me that and suggest alternatives if you can."):
+    """Continue the conversation with tool results incorporated"""
+    
+    stream_state = {"stream": "true"}
+    manager(f"\n🔧 [Tool Complete - Resuming Stream...]")
+    
+    continuation_prompt = f"""The user asked: {original_request}
 
-def resume_streaming(contextual_response="", contextual_request="", result="Tool Failed. Just tell me that and suggest alternatives if you can."):
-    # reprompt with both result and old prompt
-    stream_state["stream"] = "active"
-    manager(f"\n🔧 [Tool Complete - Resuming...]", flush=True)
-    Task(f"The user asked this question: {contextual_request} and you answered like this: {contextual_response} with this information: {result} continue where you stopped and answer with this new information and dont perform another web search.", agent, streaming_callback=streaming).solve()
+You started to answer: {partial_response}
+
+Tool result: {tool_result}
+
+Continue your response naturally, incorporating this tool result. Don't repeat what you already said, just continue from where you left off with the new information."""
+    
+    Task(continuation_prompt, agent, streaming_callback=streaming_callback).solve()
 
 def query_rag(request):
     embedding_function = get_embedding_function(openai)
@@ -279,18 +290,18 @@ def query_rag(request):
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=request)
-    response_text = Task(prompt, agent, streaming_callback=streaming).solve()
+    response_text = Task(prompt, agent, streaming_callback=streaming_callback).solve()
     sources = [doc.metadata.get("id", None) for doc, _ in results]
     formatted_response = f"\nSources: {sources}"
-    if stream_state.get("stream", "active") == "active":
+    if stream_state["stream"] == "true":
         print(formatted_response)
     return response_text
 
-def handle_tool_execution(response_content, mcp_manager):
-    contextual_response = response_content
-    contextual_request = request
-    manager(f"🔧 [DEBUG] Handle tool execution - stream state: {stream_state.get('stream')}")  # Debug line
-    manager(f"🔧 [DEBUG] Response content type: {type(response_content)}")  # Debug line
+def handle_tool_execution(response_content, mcp_manager, original_request):
+    """Handle tool execution if a tool call was detected"""
+    
+    manager(f"🔧 [DEBUG] Handle tool execution - stream state: {stream_state}")
+    manager(f"🔧 [DEBUG] Response content type: {type(response_content)}")
     
     # Handle both string and object responses
     content_str = ""
@@ -302,38 +313,39 @@ def handle_tool_execution(response_content, mcp_manager):
         content_str = str(response_content)
     
     # Check if there's a tool call in the final response even if streaming didn't detect it
-    if "⚡️" in content_str:
+    if "⚡️" in content_str and not stream_state["stream"] == "false":
         manager(f"🔧 [DEBUG] Found ⚡️ in final response, forcing tool execution")
-        stream_state["stream"] = "paused"
+        stream_state["stream"] == "false"
     
-    if not mcp_manager or stream_state.get("stream") != "paused":
-        manager(f"🔧 [DEBUG] Skipping tool execution - mcp_manager: {mcp_manager is not None}, stream: {stream_state.get('stream')}")
+    if not mcp_manager or not stream_state["stream"] == "false":
+        manager(f"🔧 [DEBUG] Skipping tool execution - mcp_manager: {mcp_manager is not None}, paused: {stream_state['stream'] == 'false'}")
         return
+    
     try:
-        manager(f"🔧 [DEBUG] Content string: {repr(content_str)}")  # Debug line
+        manager(f"🔧 [DEBUG] Content string: {repr(content_str)}")
         tool_name, arguments = parse_tool_call(content_str)
         if tool_name:
             cprint(f"ʕ•ᴥ•ʔ Using {tool_name}...", 'yellow', attrs=["bold"])
             result = mcp_manager.call_tool(tool_name, arguments)
             manager(f"🔧 Result: {result}")
-            resume_streaming(contextual_response, contextual_request, result)
+            incorporate_tool_results(original_request, content_str, str(result))
+        else:
+            manager(f"🔧 [DEBUG] No tool found in content, resuming stream")
+            stream_state["stream"] == "true"
     except Exception as e:
         manager(f"🔧 Tool execution failed: {str(e)}")
-        manager(f"🔧 [DEBUG] Exception: {e}")  # Debug line
-        resume_streaming(contextual_response, contextual_request, "Tool Failed. Just tell me that and suggest alternatives if you can.")
+        manager(f"🔧 [DEBUG] Exception: {e}")
+        incorporate_tool_results(original_request, content_str, "Tool Failed. Just tell me that and suggest alternatives if you can.")
 
 def parse_tool_call(content: str):
-    """
-    Parse tool call syntax like:
-    ⚡️tool_name({...json...})
-    """
-    manager(f"🔧 [DEBUG] Parsing content: {repr(content)}")  # Debug line
+    """Parse tool call syntax like: ⚡️tool_name({...json...})"""
+    manager(f"🔧 [DEBUG] Parsing content: {repr(content)}")
     pattern = r"⚡️(\w+)\s*\((\{.*?\})\)"
     match = re.search(pattern, content, re.DOTALL)
     if match:
         tool_name = match.group(1)
         json_str = match.group(2)
-        manager(f"🔧 [DEBUG] Found tool: {tool_name} with args: {json_str}")  # Debug line
+        manager(f"🔧 [DEBUG] Found tool: {tool_name} with args: {json_str}")
         try:
             arguments = json.loads(json_str)
         except json.JSONDecodeError as e:
@@ -341,7 +353,7 @@ def parse_tool_call(content: str):
             arguments = {}
         return tool_name, arguments
     else:
-        manager(f"🔧 [DEBUG] No tool call pattern found")  # Debug line
+        manager(f"🔧 [DEBUG] No tool call pattern found")
     return None, {}
 
 # Initialize MCP Manager if enabled
@@ -359,7 +371,7 @@ dbclear()
 manager()
 set_agent()
 cprint('ʕ•ᴥ•ʔฅ Gizmo', 'yellow', attrs=["bold"])
-Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", agent, streaming_callback=streaming).solve()
+Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", agent, streaming_callback=streaming_callback).solve()
 
 while True:
     print('\n')
@@ -386,18 +398,16 @@ while True:
     cprint('ʕ•ᴥ•ʔ Gizmo', 'yellow', attrs=["bold"])
     
     # Reset stream state before each request
-    stream_state["stream"] = "active"
+    stream_state["stream"] = "true"
     
     if db_query:
         message = query_rag(request)
-        # Handle both string and object responses
         content_str = message.content if hasattr(message, 'content') else str(message)
-        handle_tool_execution(content_str, mcp_manager)
+        handle_tool_execution(content_str, mcp_manager, request)
     else:
-        message = Task(request, agent, streaming_callback=streaming).solve()
-        # Handle both string and object responses  
+        message = Task(request, agent, streaming_callback=streaming_callback).solve()
         content_str = message.content if hasattr(message, 'content') else str(message)
-        handle_tool_execution(content_str, mcp_manager)
+        handle_tool_execution(content_str, mcp_manager, request)
 
 if mcp_manager:
     mcp_manager.shutdown_all()

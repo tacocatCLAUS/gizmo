@@ -56,6 +56,45 @@ Available MCP Tools:
 - `get_current_time` - Get current date/time
 - `run_command` - Execute system commands (use carefully)
 - `recommend-mcp-servers` - 
+- `execute_command` - 
+    Execute a shell command asynchronously and return a process ID.
+    
+    Args:
+        command: The command to execute
+        args: Optional list of command arguments
+        shell: Whether to use shell execution (default: True)
+    
+    Returns:
+        Process ID for tracking the command. IMPORTANT: The process will continue running in the background.
+        Use get_process_status(process_id) to check if it has completed, and get_process_output(process_id)
+        to view the results when finished.
+    
+- `run_in_venv` - 
+    Run a command in a specific virtual environment.
+    
+    Args:
+        venv_path: Path to the virtual environment
+        command: Command to execute in the venv
+    
+    Returns:
+        Process ID for tracking the command. IMPORTANT: The process will continue running in the background.
+        Use get_process_status(process_id) to check if it has completed, and get_process_output(process_id)
+        to view the results when finished.
+    
+- `get_process_status` - 
+    Get the status of a running process.
+    
+    Args:
+        process_id: The ID of the process to check
+    
+- `get_process_output` - 
+    Get the output of a process.
+    
+    Args:
+        process_id: The ID of the process
+        max_lines: Maximum number of lines to return
+    
+- `list_all_processes` - List all processes with their status.
           Use this tool when there is a need to findn external MCP tools.
           It explores and recommends existing MCP servers from the 
           internet, based on the description of the MCP Server 
@@ -86,6 +125,27 @@ Dont say anything after the mcp tool call because the way it works is it takes y
 - Basic math you can do mentally
 
 Example Usage Patterns:
+
+User: "Run ls -l command"
+Gizmo: I'll execute the command.
+⚡️execute_command({"command": "ls", "args": ["-l"], "shell": true})
+
+User: "Run python script in my virtual environment"
+Gizmo: I'll run the command in the virtual environment.
+⚡️run_in_venv({"venv_path": "/home/user/venv", "command": "python script.py"})
+
+User: "Check status of process 1234"
+Gizmo: I'll check the process status.
+⚡️get_process_status({"process_id": "1234"})
+
+User: "Get output of process 1234 with max 50 lines"
+Gizmo: I'll fetch the process output.
+⚡️get_process_output({"process_id": "1234", "max_lines": 50})
+
+User: "List all running processes"
+Gizmo: I'll list all processes.
+⚡️list_all_processes({})
+
 
 User: "I need an MCP server for handling Stripe payment webhooks in my Node.js application, can you recommend some?"
 Gizmo: I'll search for suitable MCP servers for you.

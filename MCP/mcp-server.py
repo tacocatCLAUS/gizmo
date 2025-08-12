@@ -140,27 +140,6 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["expression"]
             }
-        ),
-        
-        # System Commands (use carefully)
-        Tool(
-            name="run_command",
-            description="Execute a system command (use with caution)",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "command": {
-                        "type": "string",
-                        "description": "Command to execute"
-                    },
-                    "shell": {
-                        "type": "boolean",
-                        "description": "Run in shell (default: false)",
-                        "default": False
-                    }
-                },
-                "required": ["command"]
-            }
         )
     ]
 
@@ -289,36 +268,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 
             except Exception as e:
                 return [TextContent(type="text", text=f"Error calculating: {str(e)}")]
-                
-        elif name == "run_command":
-            import subprocess
-            
-            command = arguments.get("command", "")
-            use_shell = arguments.get("shell", False)
-            
-            if not command:
-                return [TextContent(type="text", text="Error: Command is required")]
-            
-            try:
-                if use_shell:
-                    result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
-                else:
-                    result = subprocess.run(command.split(), capture_output=True, text=True, timeout=30)
-                
-                output = f"💻 Command: {command}\n"
-                output += f"Exit Code: {result.returncode}\n"
-                if result.stdout:
-                    output += f"Output:\n{result.stdout}\n"
-                if result.stderr:
-                    output += f"Error:\n{result.stderr}\n"
-                
-                return [TextContent(type="text", text=output)]
-                
-            except subprocess.TimeoutExpired:
-                return [TextContent(type="text", text="Error: Command timed out")]
-            except Exception as e:
-                return [TextContent(type="text", text=f"Error running command: {str(e)}")]
-        
         else:
             raise ValueError(f"Unknown tool: {name}")
             
