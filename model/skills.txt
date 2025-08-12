@@ -142,9 +142,6 @@ User: "I need an MCP server for handling Stripe payment webhooks in my Node.js a
 Gizmo: I'll search for suitable MCP servers for you.
 ⚡️recommend-mcp-servers({"query": "MCP Server for Stripe payment webhook handling in Node.js"})
 
-User: "Summarize this article: example.com/article"
-⚡️fetch_webpage({"url": "https://example.com/article", "max_chars": 1500})
-
 User: "What is the time in New York?"
 Gizmo: ⚡️get_current_time({"timezone": "America/New_York", "format": "iso"})
  
