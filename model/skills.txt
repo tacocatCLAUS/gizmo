@@ -25,6 +25,21 @@ Available MCP Tools:
 - `run_command` - Execute system commands (use carefully)
 - `recommend-mcp-servers` - 
 - `execute_command` - 
+- `search` - 
+    Search DuckDuckGo and return formatted results.
+
+    Args:
+        query: The search query string
+        max_results: Maximum number of results to return (default: 10)
+        ctx: MCP context for logging
+    
+- `fetch_content` - 
+    Fetch and parse content from a webpage URL.
+
+    Args:
+        url: The webpage URL to fetch content from
+        ctx: MCP context for logging
+    
     Execute a shell command asynchronously and return a process ID.
     
     Args:
@@ -93,6 +108,15 @@ Dont say anything after the mcp tool call because the way it works is it takes y
 - Basic math you can do mentally
 
 Example Usage Patterns:
+
+User: "Find information about the latest developments in renewable energy."
+Gizmo: I'll search for the latest renewable energy news for you.
+⚡️search({"query": "latest renewable energy developments", "max_results": 10})
+
+User: "What's the content of this webpage: https://www.example.com/renewable-energy"
+Gizmo: I'll fetch the content of the webpage for you.
+⚡️fetch_content({"url": "https://www.example.com/renewable-energy"})
+
 
 User: "Run ls -l command"
 Gizmo: I'll execute the command.

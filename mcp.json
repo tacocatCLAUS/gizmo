@@ -8,6 +8,10 @@
             "command": "python",
             "args": ["MCP/dynamic_shell_server.py"]
         },
+    "ddg-search": {
+            "command": "python",
+            "args": ["MCP/duck.py"]
+        },
     "mcp-compass": {
       "command": "npx",
       "args": ["-y", "@liuyoshio/mcp-compass"]

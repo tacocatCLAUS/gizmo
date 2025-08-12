@@ -39,7 +39,8 @@ ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", openai_model, system_prompt=system_prompt, api_token=openai_api_key)
 agent = ollama_agent
 
-stream_state = {"stream": "true"}
+# Global state - need to accumulate chunks to detect split emoji
+stream_state = {"stream": "true", "buffer": ""}
 
 db_query = False
 addfile = 'N'
@@ -250,23 +251,31 @@ def set_agent():
     agent = openai_agent if openai else ollama_agent
 
 def streaming_callback(chunk: str):
-    """Streaming callback that detects tool calls and stops streaming"""
+    """Enhanced streaming callback that buffers and cleans output"""
     
     manager(f"🔧 [DEBUG] Streaming callback received chunk: {repr(chunk[:50])}...")
     
-    # Check for tool call pattern
-    if "⚡️" or "⚡" in chunk:
+    # Add chunk to buffer for pattern detection
+    stream_state["buffer"] += chunk
+   
+    # Check for tool call pattern in accumulated buffer
+    if "⚡️" in stream_state["buffer"] and stream_state["stream"] == "true":
         stream_state["stream"] = "false"
+        
+        # Clear the current line to remove any printed lightning bolt
+        print("\r\033[K", end="")  # Clear current line
+        
+        # Extract and print only the clean part before the tool call
+        clean_part = stream_state["buffer"].split("⚡️")[0].strip()
+        if clean_part:
+            print(clean_part, end="", flush=True)
+        
         manager(f"\n🔧 [Tool Call Detected - Processing...]")
-        manager(f"🔧 [DEBUG] Tool call detected in chunk: {repr(chunk)}")
-        # Don't print this chunk or any future chunks
         return chunk
     
     # Only print if streaming is still active
     if stream_state["stream"] == "true":
         print(chunk, end="", flush=True)
-    else:
-        manager(f"🔧 [DEBUG] Streaming stopped, not printing: {repr(chunk[:30])}...")
     
     return chunk
 
@@ -405,6 +414,7 @@ while True:
     
     # Reset stream state before each request
     stream_state["stream"] = "true"
+    stream_state["buffer"] = ""
     
     if db_query:
         message = query_rag(request)
