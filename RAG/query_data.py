@@ -31,7 +31,7 @@ Answer the question based on the above context: {question}
 """
 
 def streaming(chunk: str):
-    if "し" in chunk:
+    if "⚡️" in chunk:
         stream_state["stream"] = "false"
         manager('[SYSTEM] web request received...')
         return

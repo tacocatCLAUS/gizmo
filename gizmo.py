@@ -10,6 +10,7 @@ from survey import routines
 from langchain_chroma import Chroma
 from RAG.populate_database import parse, clear_database
 from Libraries.filepicker import select_file
+from Libraries.svu import serverupdate
 from RAG.get_embedding_function import get_embedding_function
 from langchain.prompts import ChatPromptTemplate
 import shutil
@@ -30,13 +31,10 @@ devmode = True
 db_clear = True
 use_mcp = True
 
-openai_api_key = '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'
-
-system_prompt_path = Path("setup/system.txt")
+system_prompt_path = Path("model/system.txt")
 system_prompt = system_prompt_path.read_text(encoding="utf-8")
-skills_prompt_path = Path("setup/skills.txt")
-skills = skills_prompt_path.read_text(encoding="utf-8")
-system_prompt = system_prompt + "\n\n" + skills
+skills_prompt_path = Path("model/skills.txt")
+openai_api_key = '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'
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", openai_model, system_prompt=system_prompt, api_token=openai_api_key)
 agent = ollama_agent
@@ -70,6 +68,7 @@ class MCPServerConfig:
 
 def load_mcp_config(config_path: str = "mcp.json") -> Dict[str, MCPServerConfig]:
     """Load MCP server configurations from JSON file"""
+    serverupdate()
     config_file = Path(config_path)
     if not config_file.exists():
         # Create default config file
@@ -153,7 +152,7 @@ class OllamaMCP:
                         except Exception as e:
                             self.response_queue.put(f"Error: {str(e)}")
         except Exception as e:
-            print(f"MCP Session Initialization Error for {self.server_config.name}:", str(e))
+            manager(f"MCP Session Initialization Error for {self.server_config.name}: {str(e)}")
             self.initialized.set()
             self.response_queue.put(f"MCP initialization error: {str(e)}")
 
@@ -167,7 +166,7 @@ class OllamaMCP:
     def shutdown(self):
         self.request_queue.put((None, None))
         self.thread.join()
-        print(f"MCP session {self.server_config.name} shut down.")
+        manager(f"MCP session {self.server_config.name} shut down.")
 
 class MCPManager:
     """Manages multiple MCP server connections"""
@@ -187,7 +186,7 @@ class MCPManager:
         successful_connections = 0
         for server_name, server_config in server_configs.items():
             try:
-                cprint(f"ʕ•ᴥ•ʔ Connecting to MCP server: {server_name}", 'cyan', attrs=["bold"])
+                manager(f"ʕ•ᴥ•ʔ Connecting to MCP server: {server_name}")
                 client = OllamaMCP(server_config)
                 
                 if client.initialized.wait(timeout=30):
@@ -196,16 +195,16 @@ class MCPManager:
                     for tool in client.tools:
                         self.all_tools[tool.name] = server_name
                     successful_connections += 1
-                    cprint(f"ʕ•ᴥ•ʔ Connected to {server_name} with {len(client.tools)} tools", 'green', attrs=["bold"])
+                    manager(f"ʕ•ᴥ•ʔ Connected to {server_name} with {len(client.tools)} tools")
                 else:
-                    cprint(f"ʕ•ᴥ•ʔ Connection to {server_name} timed out", 'red', attrs=["bold"])
+                    manager(f"ʕ•ᴥ•ʔ Connection to {server_name} timed out")
                     
             except Exception as e:
-                cprint(f"ʕ•ᴥ•ʔ Failed to connect to {server_name}: {str(e)}", 'red', attrs=["bold"])
+                manager(f"ʕ•ᴥ•ʔ Failed to connect to {server_name}: {str(e)}")
         
         if successful_connections > 0:
             cprint(f"ʕ•ᴥ•ʔ Successfully connected to {successful_connections} MCP server(s)", 'green', attrs=["bold"])
-            cprint(f"ʕ•ᴥ•ʔ Available tools: {list(self.all_tools.keys())}", 'cyan', attrs=["bold"])
+            manager(f"ʕ•ᴥ•ʔ Available tools: {list(self.all_tools.keys())}")
         else:
             cprint("ʕ•ᴥ•ʔ No MCP servers available", 'red', attrs=["bold"])
     
@@ -250,23 +249,28 @@ def set_agent():
     agent = openai_agent if openai else ollama_agent
 
 def streaming(chunk: str):
-    if "し" in chunk:
+    # Add debug output to see what's being detected
+    if "⚡️" in chunk:
         stream_state["stream"] = "paused"
         manager(f"\n🔧 [Tool Call Detected - Processing...]", flush=True)
+        manager(f"🔧 [DEBUG] Detected chunk: {repr(chunk)}")  # Debug line
         return chunk
     if stream_state.get("stream", "active") == "active":
         print(f"{chunk}", end="", flush=True)
     return chunk
 
 def detect_mcp_call(chunk: str) -> bool:
-    # Just check for the presence of し anywhere
-    return "し" in chunk
+    # Add debug output
+    has_emoji = "⚡️" in chunk
+    if has_emoji:
+        manager(f"🔧 [DEBUG] MCP call detected in: {repr(chunk)}")
+    return has_emoji
 
 def resume_streaming(contextual_response="", contextual_request="", result="Tool Failed. Just tell me that and suggest alternatives if you can."):
     # reprompt with both result and old prompt
     stream_state["stream"] = "active"
     manager(f"\n🔧 [Tool Complete - Resuming...]", flush=True)
-    Task(f"The user asked this question: {contextual_request} and you answered like this: {contextual_response} with this information: {result} continue where you stopped and answer with this new information and dont perform another web search. YOU MUST ANSWER IN THE ENGLISH LANGUAGE AND ONLY THE ENGLISH LANGUAGE!", agent, streaming_callback=streaming).solve()
+    Task(f"The user asked this question: {contextual_request} and you answered like this: {contextual_response} with this information: {result} continue where you stopped and answer with this new information and dont perform another web search.", agent, streaming_callback=streaming).solve()
 
 def query_rag(request):
     embedding_function = get_embedding_function(openai)
@@ -285,35 +289,59 @@ def query_rag(request):
 def handle_tool_execution(response_content, mcp_manager):
     contextual_response = response_content
     contextual_request = request
+    manager(f"🔧 [DEBUG] Handle tool execution - stream state: {stream_state.get('stream')}")  # Debug line
+    manager(f"🔧 [DEBUG] Response content type: {type(response_content)}")  # Debug line
+    
+    # Handle both string and object responses
+    content_str = ""
+    if hasattr(response_content, 'content'):
+        content_str = response_content.content
+    elif isinstance(response_content, str):
+        content_str = response_content
+    else:
+        content_str = str(response_content)
+    
+    # Check if there's a tool call in the final response even if streaming didn't detect it
+    if "⚡️" in content_str:
+        manager(f"🔧 [DEBUG] Found ⚡️ in final response, forcing tool execution")
+        stream_state["stream"] = "paused"
+    
     if not mcp_manager or stream_state.get("stream") != "paused":
+        manager(f"🔧 [DEBUG] Skipping tool execution - mcp_manager: {mcp_manager is not None}, stream: {stream_state.get('stream')}")
         return
     try:
-        tool_name, arguments = parse_tool_call(response_content)
+        manager(f"🔧 [DEBUG] Content string: {repr(content_str)}")  # Debug line
+        tool_name, arguments = parse_tool_call(content_str)
         if tool_name:
             cprint(f"ʕ•ᴥ•ʔ Using {tool_name}...", 'yellow', attrs=["bold"])
             result = mcp_manager.call_tool(tool_name, arguments)
             manager(f"🔧 Result: {result}")
             resume_streaming(contextual_response, contextual_request, result)
     except Exception as e:
-        print(f"🔧 Tool execution failed: {str(e)}")
+        manager(f"🔧 Tool execution failed: {str(e)}")
+        manager(f"🔧 [DEBUG] Exception: {e}")  # Debug line
         resume_streaming(contextual_response, contextual_request, "Tool Failed. Just tell me that and suggest alternatives if you can.")
 
 def parse_tool_call(content: str):
     """
     Parse tool call syntax like:
-    しtool_name({...json...})
+    ⚡️tool_name({...json...})
     """
-    pattern = r"し(\w+)\s*\((\{.*?\})\)"
+    manager(f"🔧 [DEBUG] Parsing content: {repr(content)}")  # Debug line
+    pattern = r"⚡️(\w+)\s*\((\{.*?\})\)"
     match = re.search(pattern, content, re.DOTALL)
     if match:
         tool_name = match.group(1)
         json_str = match.group(2)
+        manager(f"🔧 [DEBUG] Found tool: {tool_name} with args: {json_str}")  # Debug line
         try:
             arguments = json.loads(json_str)
         except json.JSONDecodeError as e:
-            print(f"🔧 JSON parsing error in tool call: {e}")
+            manager(f"🔧 JSON parsing error in tool call: {e}")
             arguments = {}
         return tool_name, arguments
+    else:
+        manager(f"🔧 [DEBUG] No tool call pattern found")  # Debug line
     return None, {}
 
 # Initialize MCP Manager if enabled
@@ -356,12 +384,20 @@ while True:
             manager("[SYSTEM] Error. No path added by user/library.")
     print('\n')
     cprint('ʕ•ᴥ•ʔ Gizmo', 'yellow', attrs=["bold"])
+    
+    # Reset stream state before each request
+    stream_state["stream"] = "active"
+    
     if db_query:
         message = query_rag(request)
-        handle_tool_execution(message.content, mcp_manager)
+        # Handle both string and object responses
+        content_str = message.content if hasattr(message, 'content') else str(message)
+        handle_tool_execution(content_str, mcp_manager)
     else:
         message = Task(request, agent, streaming_callback=streaming).solve()
-        handle_tool_execution(message.content, mcp_manager)
+        # Handle both string and object responses  
+        content_str = message.content if hasattr(message, 'content') else str(message)
+        handle_tool_execution(content_str, mcp_manager)
 
 if mcp_manager:
     mcp_manager.shutdown_all()

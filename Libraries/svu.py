@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple MCP Tools Discovery - Get tools, generate prompt, and query AI
+Simple MCP Tools Discovery - Get tools, update skills.txt, and generate examples for new tools
 """
 
 import json
@@ -9,6 +9,7 @@ import os
 import sys
 import warnings
 import requests
+from model.modelbuilder import build
 
 # Suppress asyncio ResourceWarnings on Windows
 warnings.filterwarnings("ignore", category=ResourceWarning)
@@ -18,7 +19,7 @@ async def get_mcp_tools():
     
     # Load mcp.json
     if not os.path.exists("mcp.json"):
-        print("ERROR: mcp.json not found", file=sys.stderr)
+        manager("ERROR: mcp.json not found", file=sys.stderr)
         return {}
     
     with open("mcp.json", 'r') as f:
@@ -32,7 +33,7 @@ async def get_mcp_tools():
             tools = await discover_server_tools(server_name, server_config)
             all_tools[server_name] = tools
         except Exception as e:
-            print(f"ERROR discovering {server_name}: {e}", file=sys.stderr)
+            manager(f"ERROR discovering {server_name}: {e}", file=sys.stderr)
     
     return all_tools
 
@@ -163,6 +164,113 @@ async def send_request(process, request, expect_response=True):
         
     except Exception as e:
         return {"error": str(e)}
+    
+devmode = False
+def manager(message=None, pos_var=None, flush=False):
+    if devmode:
+        if message:
+            if pos_var:
+                print(message + pos_var)
+            else:
+                print(message)
+
+def get_existing_tools(skills_file):
+    """Parse existing tools from skills.txt"""
+    if not os.path.exists(skills_file):
+        return set()
+    
+    with open(skills_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    existing_tools = set()
+    lines = content.split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if line.startswith('- `') and '`' in line[3:]:
+            tool_name = line.split('`')[1]
+            existing_tools.add(tool_name)
+    
+    return existing_tools
+
+def update_skills_file(skills_file, all_tools, new_tool_examples):
+    """Update skills.txt with new tools and examples"""
+    if not os.path.exists(skills_file):
+        manager(f"ERROR: {skills_file} not found", file=sys.stderr)
+        return
+    
+    with open(skills_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    lines = content.split('\n')
+    
+    # Find existing tools in Available MCP Tools section
+    existing_tools = get_existing_tools(skills_file)
+    
+    # Collect all new tools
+    new_tools_list = []
+    for server_name, server_info in all_tools.items():
+        if 'tools' in server_info:
+            for tool in server_info['tools']:
+                tool_name = tool.get('name', 'unnamed')
+                tool_desc = tool.get('description', 'No description')
+                if tool_name not in existing_tools:
+                    new_tools_list.append(f"- `{tool_name}` - {tool_desc}")
+    
+    if not new_tools_list:
+        manager("No new tools to add to skills.txt")
+        return
+    
+    # Find where to insert new tools (after Available MCP Tools:)
+    tools_section_idx = -1
+    for i, line in enumerate(lines):
+        if "Available MCP Tools:" in line:
+            tools_section_idx = i
+            break
+    
+    if tools_section_idx == -1:
+        manager("ERROR: Could not find 'Available MCP Tools:' section", file=sys.stderr)
+        return
+    
+    # Find where to insert (after last existing tool)
+    insert_idx = tools_section_idx + 1
+    while insert_idx < len(lines) and (lines[insert_idx].strip().startswith('-') or lines[insert_idx].strip() == ''):
+        if lines[insert_idx].strip().startswith('-'):
+            insert_idx += 1
+        else:
+            break
+    
+    # Insert new tools
+    for tool_line in reversed(new_tools_list):
+        lines.insert(insert_idx, tool_line)
+    
+    # Find Example Usage Patterns section and insert examples at the top
+    examples_idx = -1
+    for i, line in enumerate(lines):
+        if "Example Usage Patterns:" in line:
+            examples_idx = i
+            break
+    
+    if examples_idx == -1:
+        manager("ERROR: Could not find 'Example Usage Patterns:' section", file=sys.stderr)
+        return
+    
+    # Insert new examples right after "Example Usage Patterns:" line
+    # Add blank line first, then examples, then another blank line
+    lines.insert(examples_idx + 1, '')
+    
+    example_lines = new_tool_examples.strip().split('\n')
+    for i, example_line in enumerate(example_lines):
+        lines.insert(examples_idx + 2 + i, example_line)
+    
+    # Add blank line after examples
+    lines.insert(examples_idx + 2 + len(example_lines), '')
+    
+    # Write updated content
+    with open(skills_file, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+    
+    manager(f"✅ Updated {skills_file} with {len(new_tools_list)} new tools and examples")
 
 def query_ai(prompt_text):
     """Query Hack Club AI API"""
@@ -186,23 +294,21 @@ def query_ai(prompt_text):
     except Exception as e:
         return f"Request Error: {str(e)}"
 
-def main():
-    """Main function with proper asyncio handling for Windows"""
+def serverupdate():
+    """Main function"""
+    skills_file = "model/skills.txt"
+    
     if sys.platform == "win32":
-        # Use ProactorEventLoop on Windows to avoid some cleanup issues
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     
     try:
-        # Create new event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
         try:
             tools_data = loop.run_until_complete(get_mcp_tools())
         finally:
-            # Properly close the loop
             try:
-                # Cancel any remaining tasks
                 pending = asyncio.all_tasks(loop)
                 for task in pending:
                     task.cancel()
@@ -214,13 +320,35 @@ def main():
             finally:
                 loop.close()
         
-        # Create the prompt with discovered tools
+        # Get existing tools from skills.txt
+        existing_tools = get_existing_tools(skills_file)
+        
+        # Find new tools only
+        new_tools = {}
+        for server_name, server_info in tools_data.items():
+            if 'tools' in server_info:
+                new_server_tools = []
+                for tool in server_info['tools']:
+                    tool_name = tool.get('name', 'unnamed')
+                    if tool_name not in existing_tools:
+                        new_server_tools.append(tool)
+                
+                if new_server_tools:
+                    new_tools[server_name] = {"tools": new_server_tools}
+        
+        if not new_tools:
+            manager("No new tools found. Skills file is up to date.")
+            return
+        
+        manager(f"Found {sum(len(s['tools']) for s in new_tools.values())} new tools")
+        
+        # Create prompt for AI with only new tools
         prompt = """You will be given a JSON object containing a list of tools with their names, descriptions, and inputSchemas.
 Your task:
 1. For each tool, create an example interaction consisting of:
    - A "User:" line with a realistic example request based on the tool's purpose.
    - A "Gizmo:" line with a short natural reply that sounds like a helpful assistant.
-   - A tool call in the format: し<tool_name>({...arguments...})
+   - A tool call in the format: ⚡️<tool_name>({...arguments...})
      - Arguments must match the tool's inputSchema.
      - Fill required fields with realistic sample values.
      - Include default fields if they appear in the schema.
@@ -230,32 +358,37 @@ Your task:
      ```
      User: "<example request>"
      Gizmo: <assistant reply>
-     し<tool_name>({<json args>})
+     ⚡️<tool_name>({<json args>})
      ```
    - Separate each example with a blank line.
-   - No extra commentary or text outside of the examples.
+   - No extra commentary or text outside of the examples. SO NO ADDITIONAL TEXT. NO "(I'll wait for your confirmation before proceeding, or is there anything else I can help you with?)" OR ANYTHING ELSE.
 Example of expected style:
 User: "What's the latest news about AI developments?"
 Gizmo: I'll search for the latest AI news for you.
-しweb_search({"query": "latest AI news", "max_results": 5})
+⚡️web_search({"query": "latest AI news", "max_results": 5})
 
 User: "Summarize this article: example.com/article"
 Gizmo: Sure — I'll fetch the article text for you.
-しfetch_webpage({"url": "https://example.com/article", "max_chars": 1500})
+⚡️fetch_webpage({"url": "https://example.com/article", "max_chars": 1500})
 
-Here are the tools:
-""" + json.dumps(tools_data, indent=2)
+Here are the NEW tools:
+""" + json.dumps(new_tools, indent=2)
         
-        # Query the AI
-        print("Querying Hack Club AI...")
+        # Query AI for examples
+        manager("Generating examples for new tools...")
         ai_response = query_ai(prompt)
-        print("\n" + "="*60)
-        print("AI RESPONSE:")
-        print("="*60)
-        print(ai_response)
+        
+        # Update skills.txt
+        update_skills_file(skills_file, tools_data, ai_response)
+        
+        manager("\n" + "="*60)
+        manager("GENERATED EXAMPLES FOR NEW TOOLS:")
+        manager("="*60)
+        manager(ai_response)
+        build("model/system.txt", "model/skills.txt", "model/Modelfile", "gizmo", "wizardlm2:7b")
                 
     except KeyboardInterrupt:
         pass
 
 if __name__ == "__main__":
-    main()
+    serverupdate()
