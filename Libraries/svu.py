@@ -222,7 +222,7 @@ async def send_request(process, request, expect_response=True):
     except Exception as e:
         return {"error": str(e)}
     
-devmode = True
+devmode = False
 def manager(message=None, pos_var=None, flush=False, file=sys.stdout):
     if devmode:
         if message:

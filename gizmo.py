@@ -1,35 +1,287 @@
+import time
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+# Configuration
+devmode = False
+db_clear = True
+use_mcp = True
+
+def check_and_install_requirements():
+    """Check and install requirements from model/requirements.txt"""
+    requirements_path = Path("model/requirements.txt")
+    
+    if not requirements_path.exists():
+        return True, "No requirements.txt found - skipping"
+    
+    try:
+        # Read requirements
+        with open(requirements_path, 'r') as f:
+            requirements = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        
+        if not requirements:
+            return True, f"Requirements file empty - {len(requirements)} packages"
+        
+        # Try to install requirements
+        result = subprocess.run([
+            sys.executable, "-m", "pip", "install", "-r", str(requirements_path)
+        ], capture_output=True, text=True, timeout=120)
+        
+        if result.returncode == 0:
+            return True, f"Libraries installed - {len(requirements)} packages"
+        else:
+            return False, f"Failed to install requirements: {result.stderr[:100]}"
+            
+    except FileNotFoundError:
+        return True, "No requirements.txt found - skipping"
+    except Exception as e:
+        return False, f"Error checking requirements: {str(e)[:100]}"
+
+# Auto-install rich if not available
+try:
+    from rich.console import Console
+    from rich.text import Text
+    from survey import routines
+    from termcolor import colored, cprint
+    from yacana import Task, OllamaAgent, OpenAiAgent, LoggerManager
+    from pathlib import Path
+    from survey import routines
+    from langchain_chroma import Chroma
+    from RAG.populate_database import parse, clear_database
+    from Libraries.filepicker import select_file
+    from Libraries.svu import serverupdate
+    from RAG.get_embedding_function import get_embedding_function
+    from langchain.prompts import ChatPromptTemplate
+    import shutil
+    import asyncio
+    import threading
+    import queue
+    from typing import Any, Dict, List
+    from pydantic import BaseModel, Field, create_model
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    import json
+    import re
+except ImportError:
+    check_and_install_requirements()
+    # Restart the script after installing rich
+    os.execv(sys.executable, ['python'] + "model/modelbuilder.py")
+    os.execv(sys.executable, ['python'] + sys.argv)
+
+console = Console()
+
+def check_python():
+    """Check if Python is properly installed"""
+    try:
+        version = sys.version.split()[0]
+        return True, f"Python {version}"
+    except:
+        return False, "Python not found"
+
+def check_pip():
+    """Check if pip is available"""
+    try:
+        result = subprocess.run([sys.executable, "-m", "pip", "--version"], 
+                              capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            return True, "pip available"
+        else:
+            return False, "pip not found"
+    except:
+        return False, "pip not available"
+
+def check_ollama():
+    """Check if Ollama is installed and accessible"""
+    try:
+        result = subprocess.run(["ollama", "--version"], 
+                              capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            version = result.stdout.strip().split('\n')[0]
+            return True, f"Ollama {version}"
+        else:
+            return False, "Ollama not responding"
+    except FileNotFoundError:
+        return False, "Ollama not installed"
+    except Exception as e:
+        return False, f"Ollama error: {str(e)[:50]}"
+
+def post_sequence():
+    """Simulate IBM Netfinity 7000 POST sequence with real checks"""
+    # Static messages first
+    static_messages = [
+        ("Gizmo 7000 MCP Version 12", 1.2),
+        ("(c) MIT License CLAUS 2025", 0.8),
+        ("Requirements Test in progress...", 1.5),
+    ]
+    
+    for message, delay in static_messages:
+        post_text = Text(message)
+        post_text.stylize("bold green")
+        console.print(post_text)
+        time.sleep(delay)
+    
+    # Dynamic checks
+    checks = [
+        ("001: Python", check_python),
+        ("002: pip", check_pip),
+        ("003: Libraries", check_and_install_requirements),
+        ("00F: Ollama", check_ollama),
+    ]
+    
+    for check_id, check_func in checks:
+        # Perform actual check in background
+        success, message = check_func()
+        
+        if success:
+            result_text = Text(f"  {check_id}: {message} - OK")
+            result_text.stylize("bold green")
+            console.print(result_text)
+        else:
+            result_text = Text(f"  {check_id}: {message} - FAILED")
+            result_text.stylize("bold red")
+            console.print(result_text)
+            
+            # Exit on critical failures
+            if check_func in [check_python, check_ollama]:
+                error_text = Text(f"\nCRITICAL ERROR: {message}")
+                error_text.stylize("bold red")
+                console.print(error_text)
+                console.print(Text("Please install the missing component and run again.", "bold red"))
+                sys.exit(1)
+        
+        time.sleep(0.8)
+    
+    # Continue with remaining static messages
+    remaining_messages = [
+        ("  010: Hard Disk 0: IBM DCAS-34330 (4.3 GB) - OK", 0.5),
+        ("  011: CD-ROM Drive Detected", 0.4),
+        ("  012: Network Controller: Intel EtherExpress Pro/100 - OK", 0.5),
+        ("Boot Device Priority: SCSI ID 0", 0.8),
+        ("Loading Operating System...", 1.2),
+        ("Yacana Boot Agent v4.02", 0.6),
+        ("Press F to quit.", 0.4),
+        ("Starting CUDA 21.3.3 kernel...", 1.0),
+        ("CPU0: Initializing MMU... done", 0.3),
+        ("CPU1: Initializing MMU... done", 0.3),
+        ("SCSI subsystem initialized", 0.4),
+        ("eth0: link up, 100Mbps full duplex", 0.4),
+        ("Mounting root filesystem (/dev/sda1)... done", 0.6),
+        ("Starting inetd, syslogd, and sshd... done", 0.5),
+        ("System ready.", 1.0),
+        ("", 0.8)  # Empty line for spacing
+    ]
+    
+    for message, delay in remaining_messages:
+        if message:  # Only print non-empty messages
+            post_text = Text(message)
+            post_text.stylize("bold green")
+            console.print(post_text)
+        else:
+            console.print()  # Print empty line
+        time.sleep(delay)
+
+def show_ascii_art():
+    """Display the ASCII art logo"""
+    ascii_art = [
+        " ███            █████████   ███                                     ",
+        "░░░███         ███░░░░░███ ░░░                                      ",
+        "  ░░░███      ███     ░░░  ████   █████████ █████████████    ██████ ",
+        "    ░░░███   ░███         ░░███  ░█░░░░███ ░░███░░███░░███  ███░░███",
+        "     ███░    ░███    █████ ░███  ░   ███░   ░███ ░███ ░███ ░███ ░███",
+        "   ███░      ░░███  ░░███  ░███    ███░   █ ░███ ░███ ░███ ░███ ░███",
+        " ███░         ░░█████████  █████  █████████ █████░███ █████░░██████ ",
+        "░░░            ░░░░░░░░░  ░░░░░  ░░░░░░░░░ ░░░░░ ░░░ ░░░░░  ░░░░░░  "
+    ]
+    
+    # Define gradient colors (from top to bottom)
+    colors = ["#cca7df", "#b68cd4", "#b78cd7", "#9174b6", "#684d8f", "#503973", "#302d54", "#1c1444"]
+    
+    for i, line in enumerate(ascii_art):
+        text = Text(line)
+        text.stylize(f"bold {colors[i]}")
+        console.print(text)
+
+def show_welcome_selection():
+    """Show the welcome selection menu after ASCII art"""
+    welcome_text = """
+                   ╔════════════════════════════════════╗
+                   ║   ʕ•ᴥ•ʔ Your local ai assistant.   ║
+                   ║  --------------------------------  ║
+                   ║    1. Show startup each time.      ║
+                   ║    2. Skip startup in future.      ║
+                   ╚════════════════════════════════════╝
+    """
+    print(welcome_text)
+    
+    while True:
+        choice = routines.input('').strip()
+        if choice in ['1', '2']:
+            return choice
+        else:
+            print("Please enter 1 or 2.")
+
+def get_startup_preference():
+    """Get user preference for startup behavior"""
+    settings_path = Path("model/setting.txt")
+    
+    # If devmode is on, always show the selection menu (ignore saved settings)
+    if devmode:
+        show_ascii_art()
+        choice = show_welcome_selection()
+        return choice
+    
+    # Check if setting already exists
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r') as f:
+                setting = f.read().strip()
+                if setting in ['1', '2']:
+                    return setting
+        except:
+            pass  # If file is corrupted, ask again
+    
+    # First time - show ASCII art then selection
+    show_ascii_art()
+    choice = show_welcome_selection()
+    
+    # Save the preference
+    settings_path.parent.mkdir(exist_ok=True)
+    with open(settings_path, 'w') as f:
+        f.write(choice)
+    
+    return choice
+
+def startup():
+    """Main startup function that handles user preferences"""
+    preference = get_startup_preference()
+    
+    if preference == '1':
+        # Show full startup sequence
+        post_sequence()
+        time.sleep(4)
+        os.system('cls' if os.name == 'nt' else 'clear')
+        time.sleep(2)
+        show_ascii_art()
+        print("\nStarting Gizmo...")
+        time.sleep(2)
+    elif preference == '2':
+        # Skip startup sequence entirely
+        print("Starting Gizmo...")
+        time.sleep(1)
+    
+    # Clear screen one final time before starting main program
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 import os
 import sys
 os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
-from yacana import Task, OllamaAgent, OpenAiAgent, LoggerManager
-from pathlib import Path
-from termcolor import colored, cprint
-from survey import routines
-from langchain_chroma import Chroma
-from RAG.populate_database import parse, clear_database
-from Libraries.filepicker import select_file
-from Libraries.svu import serverupdate
-from RAG.get_embedding_function import get_embedding_function
-from langchain.prompts import ChatPromptTemplate
-import shutil
-import asyncio
-import threading
-import queue
-from typing import Any, Dict, List
-from pydantic import BaseModel, Field, create_model
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-import json
-import re
-
 # Configuration
 openai = False
 openai_model = "gpt-3.5-turbo"
-devmode = False
-db_clear = True
-use_mcp = True
 
 system_prompt_path = Path("model/system.txt")
 system_prompt = system_prompt_path.read_text(encoding="utf-8")
@@ -205,7 +457,7 @@ class MCPManager:
                 manager(f"ʕ•ᴥ•ʔ Failed to connect to {server_name}: {str(e)}")
         
         if successful_connections > 0:
-            cprint(f"ʕ•ᴥ•ʔ Successfully connected to {successful_connections} MCP server(s)", 'green', attrs=["bold"])
+            manager(f"ʕ•ᴥ•ʔ Successfully connected to {successful_connections} MCP server(s)")
             manager(f"ʕ•ᴥ•ʔ Available tools: {list(self.all_tools.keys())}")
         else:
             cprint("ʕ•ᴥ•ʔ No MCP servers available", 'red', attrs=["bold"])
@@ -381,11 +633,14 @@ if use_mcp:
         cprint(f"ʕ•ᴥ•ʔ MCP manager initialization failed: {str(e)}, continuing without MCP...", 'red', attrs=["bold"])
         mcp_manager = None
 
+# Run the startup sequence based on user preference
+
 # Main execution
 dbclear()
 manager()
 set_agent()
-cprint('ʕ•ᴥ•ʔฅ Gizmo', 'yellow', attrs=["bold"])
+startup()
+cprint('ʕ•ᴥ•ʔอ… Gizmo', 'yellow', attrs=["bold"])
 Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", agent, streaming_callback=streaming_callback).solve()
 
 while True:

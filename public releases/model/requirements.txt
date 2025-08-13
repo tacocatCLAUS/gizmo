@@ -1,0 +1,39 @@
+# Core dependencies
+rich
+survey
+termcolor
+yacana
+pydantic
+
+# AI/ML libraries
+langchain
+langchain-community
+langchain-ollama
+langchain-aws
+langchain-huggingface
+langchain-chroma
+chromadb
+
+# MCP (Model Context Protocol)
+mcp
+
+# Document processing
+pypdf
+beautifulsoup4
+
+# Web requests
+requests
+httpx
+
+# GUI
+tkinter
+
+# Utilities
+pytz
+argparse
+
+# Testing
+pytest
+
+# AWS (optional)
+boto3

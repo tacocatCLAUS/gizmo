@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "local-server": {
+      "command": "python",
+      "args": ["MCP/mcp-server.py"]
+    },
+    "ddg-search": {
+            "command": "python",
+            "args": ["MCP/duck.py"]
+    }
+  }
+}
