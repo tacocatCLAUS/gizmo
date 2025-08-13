@@ -27,7 +27,7 @@ import re
 # Configuration
 openai = False
 openai_model = "gpt-3.5-turbo"
-devmode = True
+devmode = False
 db_clear = True
 use_mcp = True
 
@@ -341,7 +341,7 @@ def handle_tool_execution(response_content, mcp_manager, original_request):
         manager(f"🔧 [DEBUG] Content string: {repr(content_str)}")
         tool_name, arguments = parse_tool_call(content_str)
         if tool_name:
-            cprint(f"ʕ•ᴥ•ʔ Using {tool_name}...", 'yellow', attrs=["bold"])
+            cprint(f"ʕ•ᴥ•ʔ Using {tool_name}...", attrs=["bold"])
             result = mcp_manager.call_tool(tool_name, arguments)
             manager(f"🔧 Result: {result}")
             incorporate_tool_results(original_request, content_str, str(result))

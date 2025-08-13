@@ -9,6 +9,12 @@ import os
 import sys
 import warnings
 import requests
+import sys
+import os
+
+# Add the parent directory to Python path to resolve model module import
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from model.modelbuilder import build
 
 # Suppress asyncio ResourceWarnings on Windows
@@ -18,11 +24,12 @@ async def get_mcp_tools():
     """Get all MCP tools and return as dict"""
     
     # Load mcp.json
-    if not os.path.exists("mcp.json"):
+    mcp_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "mcp.json")
+    if not os.path.exists(mcp_path):
         manager("ERROR: mcp.json not found", file=sys.stderr)
         return {}
     
-    with open("mcp.json", 'r') as f:
+    with open(mcp_path, 'r') as f:
         config = json.load(f)
     
     servers = config.get("mcpServers", {})
@@ -30,8 +37,13 @@ async def get_mcp_tools():
     
     for server_name, server_config in servers.items():
         try:
+            manager(f"Discovering tools for server: {server_name}")
             tools = await discover_server_tools(server_name, server_config)
             all_tools[server_name] = tools
+            if 'tools' in tools:
+                manager(f"Found {len(tools['tools'])} tools in {server_name}")
+            elif 'error' in tools:
+                manager(f"Error in {server_name}: {tools['error']}", file=sys.stderr)
         except Exception as e:
             manager(f"ERROR discovering {server_name}: {e}", file=sys.stderr)
     
@@ -51,6 +63,30 @@ async def discover_server_tools(server_name, server_config):
         if 'env' in server_config:
             env.update(server_config['env'])
         
+        # Special handling for cli-mcp-server - ensure required env vars are set
+        if server_name == 'cli-mcp-server':
+            if 'ALLOWED_DIR' not in env:
+                env['ALLOWED_DIR'] = os.getcwd()
+            else:
+                # Convert Unix-style paths to Windows paths on Windows
+                allowed_dir = env['ALLOWED_DIR']
+                if sys.platform == 'win32':
+                    if allowed_dir.startswith('/c/'):
+                        # Convert /c/Users/... to C:\Users\...
+                        env['ALLOWED_DIR'] = allowed_dir.replace('/c/', 'C:\\', 1).replace('/', '\\')
+                    elif allowed_dir.startswith('/Users/'):
+                        # Convert /Users/... to C:\Users\... on Windows
+                        env['ALLOWED_DIR'] = allowed_dir.replace('/Users/', 'C:\\Users\\', 1).replace('/', '\\')
+                    elif allowed_dir.startswith('/home/'):
+                        # Convert /home/user to C:\Users\user on Windows
+                        env['ALLOWED_DIR'] = allowed_dir.replace('/home/', 'C:\\Users\\', 1).replace('/', '\\')
+            manager(f"CLI MCP Server env: ALLOWED_DIR={env.get('ALLOWED_DIR')}")
+        
+        # Set working directory for the process
+        cwd = os.path.dirname(os.path.dirname(__file__))  # Parent directory of Libraries/
+        if server_name == 'cli-mcp-server':
+            manager(f"Starting CLI server in directory: {cwd}")
+        
         # Start server process
         if sys.platform == "win32" and server_config['command'] == 'npx':
             cmd_string = f"{server_config['command']} {' '.join(server_config.get('args', []))}"
@@ -59,7 +95,8 @@ async def discover_server_tools(server_name, server_config):
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env
+                env=env,
+                cwd=cwd
             )
         else:
             process = await asyncio.create_subprocess_exec(
@@ -68,14 +105,22 @@ async def discover_server_tools(server_name, server_config):
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env
+                env=env,
+                cwd=cwd
             )
         
-        await asyncio.sleep(1)  # Let server start
+        await asyncio.sleep(2)  # Let server start (longer for CLI server)
         
         # Check if process died
         if process.returncode is not None:
-            return {"error": "Server process exited immediately"}
+            stderr_output = ""
+            if process.stderr:
+                try:
+                    stderr_data = await asyncio.wait_for(process.stderr.read(), timeout=1)
+                    stderr_output = stderr_data.decode('utf-8', errors='ignore')
+                except:
+                    pass
+            return {"error": f"Server process exited immediately (code: {process.returncode}). Stderr: {stderr_output}"}
         
         # Initialize server
         init_request = {
@@ -89,7 +134,13 @@ async def discover_server_tools(server_name, server_config):
             }
         }
         
-        await send_request(process, init_request)
+        if server_name == 'cli-mcp-server':
+            manager(f"Sending init request: {json.dumps(init_request)}")
+        
+        init_response = await send_request(process, init_request)
+        
+        if server_name == 'cli-mcp-server':
+            manager(f"Init response: {init_response}")
         
         # Send initialized notification
         init_notification = {
@@ -108,7 +159,13 @@ async def discover_server_tools(server_name, server_config):
             "params": {}
         }
         
+        if server_name == 'cli-mcp-server':
+            manager(f"Sending tools request: {json.dumps(tools_request)}")
+        
         tools_response = await send_request(process, tools_request)
+        
+        if server_name == 'cli-mcp-server':
+            manager(f"Tools response: {tools_response}")
         
         if "result" in tools_response and "tools" in tools_response["result"]:
             return {"tools": tools_response["result"]["tools"]}
@@ -165,14 +222,14 @@ async def send_request(process, request, expect_response=True):
     except Exception as e:
         return {"error": str(e)}
     
-devmode = False
-def manager(message=None, pos_var=None, flush=False):
+devmode = True
+def manager(message=None, pos_var=None, flush=False, file=sys.stdout):
     if devmode:
         if message:
             if pos_var:
-                print(message + pos_var)
+                print(message + pos_var, file=file)
             else:
-                print(message)
+                print(message, file=file)
 
 def get_existing_tools(skills_file):
     """Parse existing tools from skills.txt"""
@@ -213,9 +270,8 @@ def update_skills_file(skills_file, all_tools, new_tool_examples):
         if 'tools' in server_info:
             for tool in server_info['tools']:
                 tool_name = tool.get('name', 'unnamed')
-                tool_desc = tool.get('description', 'No description')
                 if tool_name not in existing_tools:
-                    new_tools_list.append(f"- `{tool_name}` - {tool_desc}")
+                    new_tools_list.append(f"- `{tool_name}`")
     
     if not new_tools_list:
         manager("No new tools to add to skills.txt")
@@ -296,7 +352,7 @@ def query_ai(prompt_text):
 
 def serverupdate():
     """Main function"""
-    skills_file = "model/skills.txt"
+    skills_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model", "skills.txt")
     
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -385,7 +441,14 @@ Here are the NEW tools:
         manager("GENERATED EXAMPLES FOR NEW TOOLS:")
         manager("="*60)
         manager(ai_response)
-        build("model/system.txt", "model/skills.txt", "model/Modelfile", "gizmo", "wizardlm2:7b")
+        parent_dir = os.path.dirname(os.path.dirname(__file__))
+        build(
+            os.path.join(parent_dir, "model", "system.txt"),
+            os.path.join(parent_dir, "model", "skills.txt"),
+            os.path.join(parent_dir, "model", "Modelfile"),
+            "gizmo",
+            "wizardlm2:7b"
+        )
                 
     except KeyboardInterrupt:
         pass
