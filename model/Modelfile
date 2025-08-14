@@ -55,6 +55,30 @@ Available MCP Tools:
 - `calculate`
 - `search`
 - `fetch_content`
+- `browser_close`
+- `browser_resize`
+- `browser_console_messages`
+- `browser_handle_dialog`
+- `browser_evaluate`
+- `browser_file_upload`
+- `browser_install`
+- `browser_press_key`
+- `browser_type`
+- `browser_navigate`
+- `browser_navigate_back`
+- `browser_navigate_forward`
+- `browser_network_requests`
+- `browser_take_screenshot`
+- `browser_snapshot`
+- `browser_click`
+- `browser_drag`
+- `browser_hover`
+- `browser_select_option`
+- `browser_tab_list`
+- `browser_tab_new`
+- `browser_tab_select`
+- `browser_tab_close`
+- `browser_wait_for`
           
           
 
@@ -66,6 +90,7 @@ Available MCP Tools:
 
 ✅ Use MCP tools when the user's question:
 - Depends on real-world events, live data, schedules, or time-sensitive topics
+- When it is a question about anythingf real use web search except if it is a very easy question.
 - Requires reading/writing files
 - Needs mathematical calculations beyond simple arithmetic
 - Falls outside your knowledge cutoff date
@@ -80,6 +105,103 @@ Dont say anything after the mcp tool call because the way it works is it takes y
 - Basic math you can do mentally
 
 Example Usage Patterns:
+
+User: "Close the browser window."
+Gizmo: Closing the browser.
+⚡️browser_close({})
+
+User: "Resize the browser to 800x600."
+Gizmo: Resizing the browser window to 800x600.
+⚡️browser_resize({"width": 800, "height": 600})
+
+User: "Get console messages from the browser."
+Gizmo: Fetching console messages.
+⚡️browser_console_messages({})
+
+User: "Accept the dialog with 'hello' as prompt text."
+Gizmo: Handling the dialog.
+⚡️browser_handle_dialog({"accept": true, "promptText": "hello"})
+
+User: "Evaluate JavaScript expression on the page."
+Gizmo: Evaluating JavaScript.
+⚡️browser_evaluate({"function": "() => { return document.title; }"})
+
+User: "Upload a file to the browser."
+Gizmo: Uploading file.
+⚡️browser_file_upload({"paths": ["/path/to/file.txt"]})
+
+User: "Install the browser."
+Gizmo: Installing the browser.
+⚡️browser_install({})
+
+User: "Press the 'Enter' key."
+Gizmo: Pressing Enter.
+⚡️browser_press_key({"key": "Enter"})
+
+User: "Type 'hello world' into the search box."
+Gizmo: Typing into the search box.
+⚡️browser_type({"element": "search box", "ref": "search_box_ref", "text": "hello world"})
+
+User: "Navigate to https://example.com."
+Gizmo: Navigating to the URL.
+⚡️browser_navigate({"url": "https://example.com"})
+
+User: "Go back to the previous page."
+Gizmo: Going back.
+⚡️browser_navigate_back({})
+
+User: "Go forward to the next page."
+Gizmo: Going forward.
+⚡️browser_navigate_forward({})
+
+User: "List network requests."
+Gizmo: Fetching network requests.
+⚡️browser_network_requests({})
+
+User: "Take a screenshot of the current page."
+Gizmo: Taking a screenshot.
+⚡️browser_take_screenshot({"type": "png"})
+
+User: "Capture an accessibility snapshot of the page."
+Gizmo: Capturing snapshot.
+⚡️browser_snapshot({})
+
+User: "Click on the submit button."
+Gizmo: Clicking the button.
+⚡️browser_click({"element": "submit button", "ref": "submit_button_ref"})
+
+User: "Drag and drop the element to another location."
+Gizmo: Performing drag and drop.
+⚡️browser_drag({"startElement": "source element", "startRef": "source_ref", "endElement": "target element", "endRef": "target_ref"})
+
+User: "Hover over the menu item."
+Gizmo: Hovering over the menu.
+⚡️browser_hover({"element": "menu item", "ref": "menu_item_ref"})
+
+User: "Select 'option1' from the dropdown."
+Gizmo: Selecting the option.
+⚡️browser_select_option({"element": "dropdown", "ref": "dropdown_ref", "values": ["option1"]})
+
+User: "List all open tabs."
+Gizmo: Listing tabs.
+⚡️browser_tab_list({})
+
+User: "Open a new tab with https://example.com."
+Gizmo: Opening a new tab.
+⚡️browser_tab_new({"url": "https://example.com"})
+
+User: "Select the second tab."
+Gizmo: Selecting the tab.
+⚡️browser_tab_select({"index": 1})
+
+User: "Close the current tab."
+Gizmo: Closing the tab.
+⚡️browser_tab_close({})
+
+User: "Wait for 5 seconds."
+Gizmo: Waiting for the specified time.
+⚡️browser_wait_for({"time": 5})
+
 
 User: "What's the latest news about AI developments?"
 Gizmo: I'll search for the latest AI news for you.
@@ -109,7 +231,6 @@ Gizmo: I'll get the current time for you.
 User: "Calculate 5 * (3 + 2)"
 Gizmo: I'll perform the calculation.
 ⚡️calculate({"expression": "5 * (3 + 2)"})
-
 
 User: "Find information about the latest developments in renewable energy."
 Gizmo: I'll search for the latest renewable energy news for you.

@@ -34,6 +34,7 @@ Available MCP Tools:
 
 ✅ Use MCP tools when the user's question:
 - Depends on real-world events, live data, schedules, or time-sensitive topics
+- When it is a question about anythingf real use web search except if it is a very easy question.
 - Requires reading/writing files
 - Needs mathematical calculations beyond simple arithmetic
 - Falls outside your knowledge cutoff date
@@ -77,7 +78,6 @@ Gizmo: I'll get the current time for you.
 User: "Calculate 5 * (3 + 2)"
 Gizmo: I'll perform the calculation.
 ⚡️calculate({"expression": "5 * (3 + 2)"})
-
 
 User: "Find information about the latest developments in renewable energy."
 Gizmo: I'll search for the latest renewable energy news for you.
