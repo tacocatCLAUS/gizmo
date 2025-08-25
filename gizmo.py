@@ -13,7 +13,7 @@ from survey import routines
 from langchain_chroma import Chroma
 from RAG.populate_database import parse, clear_database
 from Libraries.filepicker import select_file
-from Libraries.svu import serverupdate
+from iteration.svu import serverupdate
 from RAG.get_embedding_function import get_embedding_function
 from langchain.prompts import ChatPromptTemplate
 import shutil
@@ -30,7 +30,7 @@ os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 # Configuration
-devmode = False
+devmode = True
 db_clear = True
 use_mcp = True
 

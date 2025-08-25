@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Simple MCP Tools Discovery - Get tools, update skills.txt, and generate examples for new tools
+Using full MCP Client SDK for robust server communication
 """
 
 import json
@@ -9,61 +10,248 @@ import os
 import sys
 import warnings
 import requests
-import sys
-import os
+from typing import Dict, Any, List, Optional
+from contextlib import asynccontextmanager
 
 # Add the parent directory to Python path to resolve model module import
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model.modelbuilder import build
 
+# Import MCP SDK components
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamablehttp_client
+from mcp import types
+from pydantic import AnyUrl
+
 # Suppress asyncio ResourceWarnings on Windows
 warnings.filterwarnings("ignore", category=ResourceWarning)
 
-async def get_mcp_tools():
-    """Get all MCP tools and return as dict"""
+class MCPServerManager:
+    """Manages MCP server connections and tool discovery using the full SDK"""
     
-    # Load mcp.json
-    mcp_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "mcp.json")
-    if not os.path.exists(mcp_path):
-        manager("ERROR: mcp.json not found", file=sys.stderr)
-        return {}
+    def __init__(self, config_path: str):
+        self.config_path = config_path
+        self.config = self._load_config()
+        self.devmode = False
     
-    with open(mcp_path, 'r') as f:
-        config = json.load(f)
-    
-    servers = config.get("mcpServers", {})
-    all_tools = {}
-    
-    for server_name, server_config in servers.items():
-        try:
-            manager(f"Discovering tools for server: {server_name}")
-            tools = await discover_server_tools(server_name, server_config)
-            all_tools[server_name] = tools
-            if 'tools' in tools:
-                manager(f"Found {len(tools['tools'])} tools in {server_name}")
-            elif 'error' in tools:
-                manager(f"Error in {server_name}: {tools['error']}", file=sys.stderr)
-        except Exception as e:
-            manager(f"ERROR discovering {server_name}: {e}", file=sys.stderr)
-    
-    return all_tools
-
-async def discover_server_tools(server_name, server_config):
-    """Get tools from one server"""
-    
-    # Auto-add -y flag for npx
-    if server_config['command'] == 'npx' and '-y' not in server_config.get('args', []):
-        server_config['args'] = ['-y'] + server_config.get('args', [])
-    
-    process = None
-    try:
-        # Setup environment
-        env = os.environ.copy()
-        if 'env' in server_config:
-            env.update(server_config['env'])
+    def _load_config(self) -> Dict[str, Any]:
+        """Load MCP configuration from mcp.json"""
+        if not os.path.exists(self.config_path):
+            raise FileNotFoundError(f"mcp.json not found at {self.config_path}")
         
-        # Special handling for cli-mcp-server - ensure required env vars are set
+        with open(self.config_path, 'r') as f:
+            return json.load(f)
+    
+    def _log(self, message: str, error: bool = False):
+        """Log messages if in dev mode"""
+        if self.devmode:
+            file = sys.stderr if error else sys.stdout
+            print(message, file=file)
+    
+    async def discover_all_tools(self) -> Dict[str, Any]:
+        """Discover tools from all configured MCP servers"""
+        servers = self.config.get("mcpServers", {})
+        all_tools = {}
+        
+        for server_name, server_config in servers.items():
+            try:
+                self._log(f"Discovering tools for server: {server_name}")
+                tools = await self._discover_server_tools(server_name, server_config)
+                all_tools[server_name] = tools
+                
+                if 'tools' in tools:
+                    self._log(f"Found {len(tools['tools'])} tools in {server_name}")
+                elif 'error' in tools:
+                    self._log(f"Error in {server_name}: {tools['error']}", error=True)
+                    
+            except Exception as e:
+                self._log(f"ERROR discovering {server_name}: {e}", error=True)
+                all_tools[server_name] = {"error": str(e)}
+        
+        return all_tools
+    
+    async def _discover_server_tools(self, server_name: str, server_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Discover tools from a single MCP server using the SDK"""
+        try:
+            # Determine server type and create appropriate client
+            if server_config.get("command"):
+                return await self._discover_stdio_server(server_name, server_config)
+            elif server_config.get("url"):
+                return await self._discover_http_server(server_name, server_config)
+            else:
+                return {"error": "Server config must have either 'command' or 'url'"}
+                
+        except Exception as e:
+            return {"error": f"Failed to discover tools: {str(e)}"}
+    
+    async def _discover_stdio_server(self, server_name: str, server_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Discover tools from a stdio MCP server"""
+        try:
+            # Prepare environment
+            env = os.environ.copy()
+            if 'env' in server_config:
+                env.update(server_config['env'])
+            
+            # Handle special cases for different servers
+            env = self._prepare_server_environment(server_name, server_config, env)
+            
+            # Auto-add -y flag for npx commands
+            args = server_config.get('args', [])
+            if server_config['command'] == 'npx' and '-y' not in args:
+                args = ['-y'] + args
+            
+            # Create server parameters
+            server_params = StdioServerParameters(
+                command=server_config['command'],
+                args=args,
+                env=env
+            )
+            
+            # Connect and discover tools
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    # Initialize the connection
+                    await session.initialize()
+                    
+                    # Get all available information
+                    tools_result = {"tools": [], "resources": [], "prompts": []}
+                    
+                    # List tools
+                    try:
+                        tools_response = await session.list_tools()
+                        tools_result["tools"] = [
+                            {
+                                "name": tool.name,
+                                "description": tool.description,
+                                "inputSchema": tool.inputSchema
+                            }
+                            for tool in tools_response.tools
+                        ]
+                    except Exception as e:
+                        self._log(f"Error listing tools for {server_name}: {e}", error=True)
+                    
+                    # List resources
+                    try:
+                        resources_response = await session.list_resources()
+                        tools_result["resources"] = [
+                            {
+                                "uri": str(resource.uri),
+                                "name": resource.name,
+                                "description": resource.description,
+                                "mimeType": resource.mimeType
+                            }
+                            for resource in resources_response.resources
+                        ]
+                    except Exception as e:
+                        self._log(f"Error listing resources for {server_name}: {e}", error=True)
+                    
+                    # List prompts
+                    try:
+                        prompts_response = await session.list_prompts()
+                        tools_result["prompts"] = [
+                            {
+                                "name": prompt.name,
+                                "description": prompt.description,
+                                "arguments": [
+                                    {
+                                        "name": arg.name,
+                                        "description": arg.description,
+                                        "required": arg.required
+                                    }
+                                    for arg in (prompt.arguments or [])
+                                ]
+                            }
+                            for prompt in prompts_response.prompts
+                        ]
+                    except Exception as e:
+                        self._log(f"Error listing prompts for {server_name}: {e}", error=True)
+                    
+                    return tools_result
+                    
+        except Exception as e:
+            return {"error": f"STDIO connection failed: {str(e)}"}
+    
+    async def _discover_http_server(self, server_name: str, server_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Discover tools from an HTTP MCP server"""
+        try:
+            server_url = server_config["url"]
+            
+            # Handle authentication if configured
+            auth = None
+            if "auth" in server_config:
+                # This would need to be implemented based on the auth config
+                # For now, we'll skip auth and just try basic connection
+                pass
+            
+            async with streamablehttp_client(server_url, auth=auth) as (read, write, _):
+                async with ClientSession(read, write) as session:
+                    # Initialize the connection
+                    await session.initialize()
+                    
+                    # Get all available information
+                    tools_result = {"tools": [], "resources": [], "prompts": []}
+                    
+                    # List tools
+                    try:
+                        tools_response = await session.list_tools()
+                        tools_result["tools"] = [
+                            {
+                                "name": tool.name,
+                                "description": tool.description,
+                                "inputSchema": tool.inputSchema
+                            }
+                            for tool in tools_response.tools
+                        ]
+                    except Exception as e:
+                        self._log(f"Error listing tools for {server_name}: {e}", error=True)
+                    
+                    # List resources
+                    try:
+                        resources_response = await session.list_resources()
+                        tools_result["resources"] = [
+                            {
+                                "uri": str(resource.uri),
+                                "name": resource.name,
+                                "description": resource.description,
+                                "mimeType": resource.mimeType
+                            }
+                            for resource in resources_response.resources
+                        ]
+                    except Exception as e:
+                        self._log(f"Error listing resources for {server_name}: {e}", error=True)
+                    
+                    # List prompts
+                    try:
+                        prompts_response = await session.list_prompts()
+                        tools_result["prompts"] = [
+                            {
+                                "name": prompt.name,
+                                "description": prompt.description,
+                                "arguments": [
+                                    {
+                                        "name": arg.name,
+                                        "description": arg.description,
+                                        "required": arg.required
+                                    }
+                                    for arg in (prompt.arguments or [])
+                                ]
+                            }
+                            for prompt in prompts_response.prompts
+                        ]
+                    except Exception as e:
+                        self._log(f"Error listing prompts for {server_name}: {e}", error=True)
+                    
+                    return tools_result
+                    
+        except Exception as e:
+            return {"error": f"HTTP connection failed: {str(e)}"}
+    
+    def _prepare_server_environment(self, server_name: str, server_config: Dict[str, Any], env: Dict[str, str]) -> Dict[str, str]:
+        """Prepare environment variables for specific servers"""
+        
+        # Special handling for cli-mcp-server
         if server_name == 'cli-mcp-server':
             if 'ALLOWED_DIR' not in env:
                 env['ALLOWED_DIR'] = os.getcwd()
@@ -72,166 +260,19 @@ async def discover_server_tools(server_name, server_config):
                 allowed_dir = env['ALLOWED_DIR']
                 if sys.platform == 'win32':
                     if allowed_dir.startswith('/c/'):
-                        # Convert /c/Users/... to C:\Users\...
                         env['ALLOWED_DIR'] = allowed_dir.replace('/c/', 'C:\\', 1).replace('/', '\\')
                     elif allowed_dir.startswith('/Users/'):
-                        # Convert /Users/... to C:\Users\... on Windows
                         env['ALLOWED_DIR'] = allowed_dir.replace('/Users/', 'C:\\Users\\', 1).replace('/', '\\')
                     elif allowed_dir.startswith('/home/'):
-                        # Convert /home/user to C:\Users\user on Windows
                         env['ALLOWED_DIR'] = allowed_dir.replace('/home/', 'C:\\Users\\', 1).replace('/', '\\')
-            manager(f"CLI MCP Server env: ALLOWED_DIR={env.get('ALLOWED_DIR')}")
+            self._log(f"CLI MCP Server env: ALLOWED_DIR={env.get('ALLOWED_DIR')}")
         
-        # Set working directory for the process
-        cwd = os.path.dirname(os.path.dirname(__file__))  # Parent directory of Libraries/
-        if server_name == 'cli-mcp-server':
-            manager(f"Starting CLI server in directory: {cwd}")
+        # Add more server-specific environment handling here as needed
         
-        # Start server process
-        if sys.platform == "win32" and server_config['command'] == 'npx':
-            cmd_string = f"{server_config['command']} {' '.join(server_config.get('args', []))}"
-            process = await asyncio.create_subprocess_shell(
-                cmd_string,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=env,
-                cwd=cwd
-            )
-        else:
-            process = await asyncio.create_subprocess_exec(
-                server_config['command'],
-                *server_config.get('args', []),
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=env,
-                cwd=cwd
-            )
-        
-        await asyncio.sleep(2)  # Let server start (longer for CLI server)
-        
-        # Check if process died
-        if process.returncode is not None:
-            stderr_output = ""
-            if process.stderr:
-                try:
-                    stderr_data = await asyncio.wait_for(process.stderr.read(), timeout=1)
-                    stderr_output = stderr_data.decode('utf-8', errors='ignore')
-                except:
-                    pass
-            return {"error": f"Server process exited immediately (code: {process.returncode}). Stderr: {stderr_output}"}
-        
-        # Initialize server
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
-                "clientInfo": {"name": "simple-discovery", "version": "1.0.0"}
-            }
-        }
-        
-        if server_name == 'cli-mcp-server':
-            manager(f"Sending init request: {json.dumps(init_request)}")
-        
-        init_response = await send_request(process, init_request)
-        
-        if server_name == 'cli-mcp-server':
-            manager(f"Init response: {init_response}")
-        
-        # Send initialized notification
-        init_notification = {
-            "jsonrpc": "2.0",
-            "method": "notifications/initialized"
-        }
-        await send_request(process, init_notification, expect_response=False)
-        
-        await asyncio.sleep(0.5)
-        
-        # Get tools
-        tools_request = {
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "tools/list",
-            "params": {}
-        }
-        
-        if server_name == 'cli-mcp-server':
-            manager(f"Sending tools request: {json.dumps(tools_request)}")
-        
-        tools_response = await send_request(process, tools_request)
-        
-        if server_name == 'cli-mcp-server':
-            manager(f"Tools response: {tools_response}")
-        
-        if "result" in tools_response and "tools" in tools_response["result"]:
-            return {"tools": tools_response["result"]["tools"]}
-        else:
-            return {"error": "Failed to get tools", "response": tools_response}
-            
-    except Exception as e:
-        return {"error": str(e)}
-    
-    finally:
-        if process:
-            try:
-                # Close stdin first to signal shutdown
-                if process.stdin and not process.stdin.is_closing():
-                    process.stdin.close()
-                    await asyncio.sleep(0.1)
-                
-                # Wait for graceful exit
-                try:
-                    await asyncio.wait_for(process.wait(), timeout=1)
-                except asyncio.TimeoutError:
-                    # Force terminate if needed
-                    process.terminate()
-                    try:
-                        await asyncio.wait_for(process.wait(), timeout=1)
-                    except asyncio.TimeoutError:
-                        process.kill()
-                        try:
-                            await asyncio.wait_for(process.wait(), timeout=0.5)
-                        except:
-                            pass
-            except Exception:
-                pass
+        return env
 
-async def send_request(process, request, expect_response=True):
-    """Send JSON-RPC request to MCP server"""
-    try:
-        request_str = json.dumps(request) + "\n"
-        process.stdin.write(request_str.encode())
-        await process.stdin.drain()
-        
-        if not expect_response:
-            return {"success": True}
-        
-        # Read response with timeout
-        response_line = await asyncio.wait_for(process.stdout.readline(), timeout=10)
-        
-        if not response_line:
-            return {"error": "No response"}
-        
-        response_text = response_line.decode().strip()
-        return json.loads(response_text)
-        
-    except Exception as e:
-        return {"error": str(e)}
-    
-devmode = False
-def manager(message=None, pos_var=None, flush=False, file=sys.stdout):
-    if devmode:
-        if message:
-            if pos_var:
-                print(message + pos_var, file=file)
-            else:
-                print(message, file=file)
 
-def get_existing_tools(skills_file):
+def get_existing_tools(skills_file: str) -> set:
     """Parse existing tools from skills.txt"""
     if not os.path.exists(skills_file):
         return set()
@@ -250,10 +291,11 @@ def get_existing_tools(skills_file):
     
     return existing_tools
 
-def update_skills_file(skills_file, all_tools, new_tool_examples):
+
+def update_skills_file(skills_file: str, all_tools: Dict[str, Any], new_tool_examples: str):
     """Update skills.txt with new tools and examples"""
     if not os.path.exists(skills_file):
-        manager(f"ERROR: {skills_file} not found", file=sys.stderr)
+        print(f"ERROR: {skills_file} not found", file=sys.stderr)
         return
     
     with open(skills_file, 'r', encoding='utf-8') as f:
@@ -274,7 +316,7 @@ def update_skills_file(skills_file, all_tools, new_tool_examples):
                     new_tools_list.append(f"- `{tool_name}`")
     
     if not new_tools_list:
-        manager("No new tools to add to skills.txt")
+        print("No new tools to add to skills.txt")
         return
     
     # Find where to insert new tools (after Available MCP Tools:)
@@ -285,7 +327,7 @@ def update_skills_file(skills_file, all_tools, new_tool_examples):
             break
     
     if tools_section_idx == -1:
-        manager("ERROR: Could not find 'Available MCP Tools:' section", file=sys.stderr)
+        print("ERROR: Could not find 'Available MCP Tools:' section", file=sys.stderr)
         return
     
     # Find where to insert (after last existing tool)
@@ -308,7 +350,7 @@ def update_skills_file(skills_file, all_tools, new_tool_examples):
             break
     
     if examples_idx == -1:
-        manager("ERROR: Could not find 'Example Usage Patterns:' section", file=sys.stderr)
+        print("ERROR: Could not find 'Example Usage Patterns:' section", file=sys.stderr)
         return
     
     # Insert new examples right after "Example Usage Patterns:" line
@@ -326,9 +368,10 @@ def update_skills_file(skills_file, all_tools, new_tool_examples):
     with open(skills_file, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
     
-    manager(f"✅ Updated {skills_file} with {len(new_tools_list)} new tools and examples")
+    print(f"✅ Updated {skills_file} with {len(new_tools_list)} new tools and examples")
 
-def query_ai(prompt_text):
+
+def query_ai(prompt_text: str) -> str:
     """Query Hack Club AI API"""
     try:
         response = requests.post(
@@ -350,37 +393,31 @@ def query_ai(prompt_text):
     except Exception as e:
         return f"Request Error: {str(e)}"
 
-def serverupdate():
+
+async def main():
     """Main function"""
-    skills_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "model", "skills.txt")
+    # Get paths
+    script_dir = os.path.dirname(__file__)
+    parent_dir = os.path.dirname(script_dir)
+    mcp_config_path = os.path.join(parent_dir, "mcp.json")
+    skills_file = os.path.join(parent_dir, "model", "skills.txt")
     
-    if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-    
+    # Create server manager
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        manager = MCPServerManager(mcp_config_path)
+        # manager.devmode = True  # Enable for debugging
         
-        try:
-            tools_data = loop.run_until_complete(get_mcp_tools())
-        finally:
-            try:
-                pending = asyncio.all_tasks(loop)
-                for task in pending:
-                    task.cancel()
-                
-                if pending:
-                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-            except Exception:
-                pass
-            finally:
-                loop.close()
+        # Discover all tools
+        print("Discovering MCP tools...")
+        tools_data = await manager.discover_all_tools()
         
         # Get existing tools from skills.txt
         existing_tools = get_existing_tools(skills_file)
         
         # Find new tools only
         new_tools = {}
+        total_new_count = 0
+        
         for server_name, server_info in tools_data.items():
             if 'tools' in server_info:
                 new_server_tools = []
@@ -388,15 +425,16 @@ def serverupdate():
                     tool_name = tool.get('name', 'unnamed')
                     if tool_name not in existing_tools:
                         new_server_tools.append(tool)
+                        total_new_count += 1
                 
                 if new_server_tools:
                     new_tools[server_name] = {"tools": new_server_tools}
         
         if not new_tools:
-            manager("No new tools found. Skills file is up to date.")
+            print("No new tools found. Skills file is up to date.")
             return
         
-        manager(f"Found {sum(len(s['tools']) for s in new_tools.values())} new tools")
+        print(f"Found {total_new_count} new tools across {len(new_tools)} servers")
         
         # Create prompt for AI with only new tools
         prompt = """You will be given a JSON object containing a list of tools with their names, descriptions, and inputSchemas.
@@ -417,31 +455,25 @@ Your task:
      ⚡️<tool_name>({<json args>})
      ```
    - Separate each example with a blank line.
-   - No extra commentary or text outside of the examples. SO NO ADDITIONAL TEXT. NO "(I'll wait for your confirmation before proceeding, or is there anything else I can help you with?)" OR ANYTHING ELSE.
-Example of expected style:
-User: "What's the latest news about AI developments?"
-Gizmo: I'll search for the latest AI news for you.
-⚡️web_search({"query": "latest AI news", "max_results": 5})
-
-User: "Summarize this article: example.com/article"
-Gizmo: Sure — I'll fetch the article text for you.
-⚡️fetch_webpage({"url": "https://example.com/article", "max_chars": 1500})
+   - No extra commentary or text outside of the examples.
 
 Here are the NEW tools:
 """ + json.dumps(new_tools, indent=2)
         
         # Query AI for examples
-        manager("Generating examples for new tools...")
+        print("Generating examples for new tools...")
         ai_response = query_ai(prompt)
         
         # Update skills.txt
         update_skills_file(skills_file, tools_data, ai_response)
         
-        manager("\n" + "="*60)
-        manager("GENERATED EXAMPLES FOR NEW TOOLS:")
-        manager("="*60)
-        manager(ai_response)
-        parent_dir = os.path.dirname(os.path.dirname(__file__))
+        print("\n" + "="*60)
+        print("GENERATED EXAMPLES FOR NEW TOOLS:")
+        print("="*60)
+        print(ai_response)
+        
+        # Rebuild model
+        print("\nRebuilding model...")
         build(
             os.path.join(parent_dir, "model", "system.txt"),
             os.path.join(parent_dir, "model", "skills.txt"),
@@ -449,9 +481,25 @@ Here are the NEW tools:
             "gizmo",
             "wizardlm2:7b"
         )
+        print("✅ Model rebuild complete")
                 
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def serverupdate():
+    """Entry point for the server update function"""
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    
+    try:
+        asyncio.run(main())
     except KeyboardInterrupt:
-        pass
+        print("\nOperation cancelled by user")
+    except Exception as e:
+        print(f"Unexpected error: {e}", file=sys.stderr)
+
 
 if __name__ == "__main__":
     serverupdate()

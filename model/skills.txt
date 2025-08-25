@@ -23,6 +23,13 @@ Available MCP Tools:
 - `calculate`
 - `search`
 - `fetch_content`
+- `search_cards`
+- `get_card_by_id`
+- `get_card_by_name`
+- `random_card`
+- `get_rulings`
+- `get_prices_by_id`
+- `get_prices_by_name`
           
           
 
@@ -49,6 +56,40 @@ Dont say anything after the mcp tool call because the way it works is it takes y
 - Basic math you can do mentally
 
 Example Usage Patterns:
+
+User: "Find me all the blue creatures with flying from the latest set"
+Gizmo: "Here are the blue creatures with flying from the latest set"
+⚡️search_cards({"query": "c:blue t:creature is:flying set:latest"})
+
+
+User: "What is the data for the card with ID c09c71fb-7acb-4ffb-a47b-8961a0cf4990"
+Gizmo: "Card data retrieved successfully"
+⚡️get_card_by_id({"id": "c09c71fb-7acb-4ffb-a47b-8961a0cf4990"})
+
+
+User: "Show me the data for the card 'Black Lotus'"
+Gizmo: "Here's the data for 'Black Lotus'"
+⚡️get_card_by_name({"name": "Black Lotus"})
+
+
+User: "Give me a random Magic card"
+Gizmo: "Here's a random Magic card"
+⚡️random_card({})
+
+
+User: "What are the official rulings for the card with ID c09c71fb-7acb-4ffb-a47b-8961a0cf4990"
+Gizmo: "Here are the official rulings for that card"
+⚡️get_rulings({"id": "c09c71fb-7acb-4ffb-a47b-8961a0cf4990"})
+
+
+User: "What are the prices for the card with ID c09c71fb-7acb-4ffb-a47b-8961a0cf4990"
+Gizmo: "Here are the prices for that card"
+⚡️get_prices_by_id({"id": "c09c71fb-7acb-4ffb-a47b-8961a0cf4990"})
+
+User: "What are the prices for 'Lightning Bolt'"
+Gizmo: "Here are the prices for 'Lightning Bolt'"
+⚡️get_prices_by_name({"name": "Lightning Bolt"})
+
 
 User: "What's the latest news about AI developments?"
 Gizmo: I'll search for the latest AI news for you.

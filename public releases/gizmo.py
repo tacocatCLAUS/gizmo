@@ -51,7 +51,7 @@ try:
     from langchain_chroma import Chroma
     from RAG.populate_database import parse, clear_database
     from Libraries.filepicker import select_file
-    from Libraries.svu import serverupdate
+    from iteration.svu import serverupdate
     from RAG.get_embedding_function import get_embedding_function
     from langchain.prompts import ChatPromptTemplate
     import shutil
