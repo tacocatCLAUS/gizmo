@@ -1,0 +1,8 @@
+2025-08-25 18:45:53,801 - root - INFO - STDIO MODE: Logging configured - all logs redirected to /Users/CLAUS/Documents/GitHub/gizmo/RAG/logs\chroma_mcp_stdio_1756161953.log
+2025-08-25 18:45:53,801 - chromamcp.unconfigured - WARNING - Logger requested before main configuration.
+2025-08-25 18:45:53,801 - root - INFO - Log retention policy set to 7 days
+2025-08-25 18:45:53,801 - root - INFO - STDIO MODE: Logging configured - all logs redirected to /Users/CLAUS/Documents/GitHub/gizmo/RAG/logs\chroma_mcp_stdio_1756161953.log
+2025-08-25 18:45:53,801 - root - INFO - Monkey patched logging.getLogger to ensure all future loggers use file output only
+2025-08-25 18:45:53,801 - chromamcp.unconfigured - WARNING - Logger requested before main configuration.
+2025-08-25 18:45:53,802 - root - INFO - Log retention policy set to 7 days
+2025-08-25 18:45:53,802 - root - INFO - Monkey patched logging.getLogger to ensure all future loggers use file output only

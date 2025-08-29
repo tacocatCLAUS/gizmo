@@ -30,9 +30,10 @@ os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 # Configuration
-devmode = True
-db_clear = True
+devmode = False
+db_clear = False
 use_mcp = True
+voice = True
 
 # Configuration
 openai = False
