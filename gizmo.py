@@ -15,6 +15,7 @@ from RAG.populate_database import parse, clear_database
 from Libraries.filepicker import select_file
 from Libraries.voicehandling import clean_function_text
 from Libraries.svu import serverupdate
+from Libraries.lagcleaner import clear_vram_and_reset as vramclear
 from voice.f5 import f5
 from RAG.get_embedding_function import get_embedding_function
 from langchain.prompts import ChatPromptTemplate
@@ -26,8 +27,6 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, Field, create_model
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from contextlib import contextmanager, redirect_stdout
-from io import StringIO
 import json
 import re
 os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
@@ -35,9 +34,9 @@ os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 # Configuration
 devmode = False
-db_clear = True
+db_clear = False
 use_mcp = True
-voice = True
+voice = False
 
 # Configuration
 openai = False
@@ -265,9 +264,8 @@ def set_agent():
     global agent
     agent = openai_agent if openai else ollama_agent
 
-@contextmanager
 def voicecheck():
-    if voice == True:
+    if voice == True and stream_state["stream"] == "true":
         # Handle both dict and OllamaTextMessage object types
         if hasattr(message, 'content'):
             vctxt = clean_function_text(message.content)
@@ -276,11 +274,9 @@ def voicecheck():
         else:
             # Fallback - convert to string
             vctxt = clean_function_text(str(message))
-        if devmode == True:
-            with redirect_stdout(StringIO()):
-                f5(vctxt)
-        else:
-            f5(vctxt)
+        print("/n")
+        f5(vctxt)
+
 
 def streaming_callback(chunk: str):
     """Enhanced streaming callback that buffers and cleans output"""
@@ -324,12 +320,13 @@ Tool result: {tool_result}
 
 Continue your response naturally, incorporating this tool result. Don't repeat what you already said, just continue from where you left off with the new information."""
     
-    # Simple callback that just prints - no streaming control needed for continuation
-    def continuation_callback(chunk: str):
-        print(chunk, end="", flush=True)
-        return chunk
-    
-    message = Task(continuation_prompt, agent, streaming_callback=continuation_callback).solve()
+    # Simple callback that just prints - no streaming control needed for continuation bad implementation...
+#    def continuation_callback(chunk: str):
+#       print(chunk, end="", flush=True)
+#      return chunk
+    stream_state["stream"] = "true"
+    stream_state["buffer"] = ""  # Clear the buffer to prevent old ⚡️ patterns from interfering
+    message = Task(continuation_prompt, agent, streaming_callback=streaming_callback).solve()
     voicecheck()
 
 def query_rag(request):
@@ -345,9 +342,8 @@ def query_rag(request):
     formatted_response = f"\nSources: {sources}"
     if stream_state["stream"] == "true":
         print(formatted_response)
-    return response_text
-    db_query = False
     voicecheck()
+    return response_text
 
 def handle_tool_execution(response_content, mcp_manager, original_request):
     """Handle tool execution if a tool call was detected"""
@@ -419,24 +415,6 @@ def parse_tool_call(content: str):
         manager(f"🔧 [DEBUG] No tool call pattern found in: {repr(content)}")
     return None, {}
 
-def parse_tool_call(content: str):
-    """Parse tool call syntax like: ⚡️tool_name({...json...})"""
-    manager(f"🔧 [DEBUG] Parsing content for tool calls...")
-    pattern = r"⚡️(\w+)\s*\((\{.*?\})\)"
-    match = re.search(pattern, content, re.DOTALL)
-    if match:
-        tool_name = match.group(1)
-        json_str = match.group(2)
-        manager(f"🔧 [DEBUG] Found tool: {tool_name} with args: {json_str}")
-        try:
-            arguments = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            manager(f"🔧 JSON parsing error in tool call: {e}")
-            arguments = {}
-        return tool_name, arguments
-    else:
-        manager(f"🔧 [DEBUG] No tool call pattern found")
-    return None, {}
 
 # Initialize MCP Manager if enabled
 mcp_manager = None
@@ -500,3 +478,5 @@ while True:
 
 if mcp_manager:
     mcp_manager.shutdown_all()
+
+vramclear(devmode)

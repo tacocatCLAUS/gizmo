@@ -159,11 +159,38 @@ def calculate_chunk_ids(chunks):
 
 def clear_database():
     if os.path.exists(CHROMA_PATH):
-        shutil.rmtree(CHROMA_PATH)
+        import time
+        import gc
+        
+        # Force garbage collection to close any open database connections
+        gc.collect()
+        
+        max_retries = 5
+        retry_delay = 0.5
+        
+        for attempt in range(max_retries):
+            try:
+                shutil.rmtree(CHROMA_PATH)
+                break
+            except PermissionError as e:
+                if attempt < max_retries - 1:
+                    manager(f"[SYSTEM] Database locked (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    gc.collect()  # Try garbage collection again
+                else:
+                    manager(f"[SYSTEM] Failed to clear database after {max_retries} attempts: {str(e)}")
+                    manager(f"[SYSTEM] You may need to close any applications using the ChromaDB and try again.")
+                    raise e
+        
         os.makedirs(CHROMA_PATH, exist_ok=True)
+        
         if os.path.exists(DATA_PATH):
-            shutil.rmtree(DATA_PATH)
-            os.makedirs(DATA_PATH, exist_ok=True)
+            try:
+                shutil.rmtree(DATA_PATH)
+                os.makedirs(DATA_PATH, exist_ok=True)
+            except PermissionError as e:
+                manager(f"[SYSTEM] Warning: Could not clear data directory: {str(e)}")
 
 if __name__ == "__main__":
     parse()

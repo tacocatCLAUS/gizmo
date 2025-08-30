@@ -11,6 +11,16 @@
     "scryfall": {
       "command": "npx",
       "args": ["scryfall-mcp-server"]
+    },
+    "chroma": {
+      "command": "uvx",
+      "args": [
+        "chroma-mcp",
+        "--client-type",
+        "persistent",
+        "--data-dir",
+        "/Users/CLAUS/Documents/GitHub/gizmo/RAG/chroma"
+      ]
     }
   }
 }
