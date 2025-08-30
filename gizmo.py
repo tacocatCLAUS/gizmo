@@ -13,7 +13,9 @@ from survey import routines
 from langchain_chroma import Chroma
 from RAG.populate_database import parse, clear_database
 from Libraries.filepicker import select_file
-from iteration.svu import serverupdate
+from Libraries.voicehandling import clean_function_text
+from Libraries.svu import serverupdate
+from voice.f5 import f5
 from RAG.get_embedding_function import get_embedding_function
 from langchain.prompts import ChatPromptTemplate
 import shutil
@@ -24,6 +26,8 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, Field, create_model
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from contextlib import contextmanager, redirect_stdout
+from io import StringIO
 import json
 import re
 os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
@@ -31,7 +35,7 @@ os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 # Configuration
 devmode = False
-db_clear = False
+db_clear = True
 use_mcp = True
 voice = True
 
@@ -50,8 +54,11 @@ agent = ollama_agent
 # Global state - need to accumulate chunks to detect split emoji
 stream_state = {"stream": "true", "buffer": ""}
 
+# Variable Declarations
+
 db_query = False
 addfile = 'N'
+message = {'content': ''}
 CHROMA_PATH = "RAG/chroma"
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
@@ -258,6 +265,23 @@ def set_agent():
     global agent
     agent = openai_agent if openai else ollama_agent
 
+@contextmanager
+def voicecheck():
+    if voice == True:
+        # Handle both dict and OllamaTextMessage object types
+        if hasattr(message, 'content'):
+            vctxt = clean_function_text(message.content)
+        elif isinstance(message, dict) and 'content' in message:
+            vctxt = clean_function_text(message['content'])
+        else:
+            # Fallback - convert to string
+            vctxt = clean_function_text(str(message))
+        if devmode == True:
+            with redirect_stdout(StringIO()):
+                f5(vctxt)
+        else:
+            f5(vctxt)
+
 def streaming_callback(chunk: str):
     """Enhanced streaming callback that buffers and cleans output"""
     
@@ -305,7 +329,8 @@ Continue your response naturally, incorporating this tool result. Don't repeat w
         print(chunk, end="", flush=True)
         return chunk
     
-    Task(continuation_prompt, agent, streaming_callback=continuation_callback).solve()
+    message = Task(continuation_prompt, agent, streaming_callback=continuation_callback).solve()
+    voicecheck()
 
 def query_rag(request):
     embedding_function = get_embedding_function(openai)
@@ -314,12 +339,15 @@ def query_rag(request):
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=request)
-    response_text = Task(prompt, agent, streaming_callback=streaming_callback).solve()
+    message = Task(prompt, agent, streaming_callback=streaming_callback).solve()
+    response_text = message
     sources = [doc.metadata.get("id", None) for doc, _ in results]
     formatted_response = f"\nSources: {sources}"
     if stream_state["stream"] == "true":
         print(formatted_response)
     return response_text
+    db_query = False
+    voicecheck()
 
 def handle_tool_execution(response_content, mcp_manager, original_request):
     """Handle tool execution if a tool call was detected"""
@@ -354,7 +382,7 @@ def handle_tool_execution(response_content, mcp_manager, original_request):
                 result = mcp_manager.call_tool(tool_name, arguments)
                 manager(f"🔧 Result: {result}")
                 incorporate_tool_results(original_request, content_str, str(result))
-            except Exception as tool_error:
+            except  Exception as tool_error:
                 manager(f"🔧 Tool execution failed: {str(tool_error)}")
                 # Try the same tool call again but with failure context
                 failure_context = f"The tool call failed with error: {str(tool_error)}. Suggest alternatives."
@@ -427,7 +455,8 @@ dbclear()
 manager()
 set_agent()
 cprint('ʕ•ᴥ•ʔอ… Gizmo', 'yellow', attrs=["bold"])
-Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", agent, streaming_callback=streaming_callback).solve()
+message = Task("I have no questions. introduce yourself. dont mention your skills at all. be breif.", agent, streaming_callback=streaming_callback).solve()
+voicecheck()
 
 while True:
     print('\n')
@@ -450,6 +479,8 @@ while True:
         else:
             cprint("Error.", 'red')
             manager("[SYSTEM] Error. No path added by user/library.")
+    else:
+        db_query = False
     print('\n')
     cprint('ʕ•ᴥ•ʔ Gizmo', 'yellow', attrs=["bold"])
     
@@ -457,12 +488,13 @@ while True:
     stream_state["stream"] = "true"
     stream_state["buffer"] = ""
     
-    if db_query:
+    if db_query == True:
         message = query_rag(request)
         content_str = message.content if hasattr(message, 'content') else str(message)
         handle_tool_execution(content_str, mcp_manager, request)
     else:
         message = Task(request, agent, streaming_callback=streaming_callback).solve()
+        voicecheck()
         content_str = message.content if hasattr(message, 'content') else str(message)
         handle_tool_execution(content_str, mcp_manager, request)
 

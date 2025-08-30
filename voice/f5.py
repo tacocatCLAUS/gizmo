@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'F5-TTS', 'src'))
 
 gentext = "I apologize but the voice model program has failed in some way. Please try again and report this issue if it persists."
 
-def run_f5_tts_inference():
+def run_f5_tts_inference(gentext):
     """
     Execute F5-TTS inference using local installation
     """
@@ -22,8 +22,12 @@ def run_f5_tts_inference():
     # Use the local F5-TTS installation
     local_infer_script = os.path.join(os.path.dirname(__file__), 'F5-TTS', 'src', 'f5_tts', 'infer', 'infer_cli.py')
     
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(__file__)
+    ref_audio_path = os.path.join(script_dir, 'dataset', '12secondtraining.wav')
+    
     # Construct the command to use local script with proper model name
-    command = f'''python3 "{local_infer_script}" --model "F5TTS_Base" --ref_audio "dataset/12secondtraining.wav" --ref_text "Picture a world just like ours, except the people are a fair bit smarter. In this world, Einstein isn't one in a million, he's one in a thousand. In fact, here he is now." --speed 0.8 --remove_silence --gen_text "{gentext}"'''
+    command = f'''python3 "{local_infer_script}" --model "F5TTS_Base" --ref_audio "{ref_audio_path}" --ref_text "Picture a world just like ours, except the people are a fair bit smarter. In this world, Einstein isn't one in a million, he's one in a thousand. In fact, here he is now." --speed 0.8 --remove_silence --gen_text "{gentext}"'''
     
     # Execute the command
     exit_code = os.system(command)
@@ -46,8 +50,6 @@ def play_wav():
         else:
             subprocess.run(['aplay', str(wav_file)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def main(gentext="I apologize but the voice model program has failed in some way. Please try again and report this issue if it persists."):
-    run_f5_tts_inference()
+def f5(gentext="I apologize but the voice model program has failed in some way. Please try again and report this issue if it persists."):
+    run_f5_tts_inference(gentext)
     play_wav()
-
-main()
