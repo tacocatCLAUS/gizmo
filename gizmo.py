@@ -32,22 +32,25 @@ import re
 os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
-# Configuration
+# Config...uration
 devmode = False
 db_clear = False
 use_mcp = True
 voice = False
 
-# Configuration
 openai = False
 openai_model = "gpt-3.5-turbo"
+
+hc = False
+hc_model = "meta-llama/llama-4-maverick-17b-128e-instruct"
 
 system_prompt_path = Path("model/system.txt")
 system_prompt = system_prompt_path.read_text(encoding="utf-8")
 skills_prompt_path = Path("model/skills.txt")
 openai_api_key = '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'
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
-openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmo", openai_model, system_prompt=system_prompt, api_token=openai_api_key)
+hc_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmoʰᶜ", "meta-llama/llama-4-maverick-17b-128e-instruct", system_prompt, endpoint="https://ai.hackclub.com", api_token="leave blank")
+openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmoᴳᴾᵀ", openai_model, system_prompt, api_token=openai_api_key)
 agent = ollama_agent
 
 # Global state - need to accumulate chunks to detect split emoji
@@ -262,7 +265,12 @@ def manager(message=None, pos_var=None, flush=False):
 
 def set_agent():
     global agent
-    agent = openai_agent if openai else ollama_agent
+    if openai:
+        agent = openai_agent
+    elif hc:
+        agent = hc_agent
+    else:
+        agent = ollama_agent
 
 def voicecheck():
     if voice == True and stream_state["stream"] == "true":
