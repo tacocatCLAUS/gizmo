@@ -282,7 +282,7 @@ def voicecheck():
         else:
             # Fallback - convert to string
             vctxt = clean_function_text(str(message))
-        print("/n")
+        print("\n")
         f5(vctxt)
 
 
