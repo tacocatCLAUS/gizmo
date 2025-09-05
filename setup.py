@@ -62,17 +62,17 @@ if __name__ == "__main__":
 
     while True:
         model = input("Which one? (1-3):")
-        if model == 1:
+        if model == "1":
             model = "openai"
             print("What is your OpenAI key?")
             openai_api_key = input("It is:")
             set_openai(True, "gpt-4", openai_api_key)
             break
-        elif model == 2:
+        elif model == "2":
             model = "hc"
             set_hackclub(True)
             break
-        elif model == 3:
+        elif model == "3":
             model = "ollama"
             break
         else:
