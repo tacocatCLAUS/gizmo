@@ -3,7 +3,7 @@ import sys
 import os
 from Libraries.config_manager import set_openai, set_hackclub, set_ollama, set_rag_model, set_mcp_config_path, set_openai_api_key, get_openai_api_key, enable_voice, enable_devmode, set_db_clear, enable_mcp, get_config, update_config
 # Define the virtual environment name and the library to install
-VENV_NAME = "genv"
+VENV_NAME = ".genv"
 requirements_file = "model/requirements.txt"
 
 def create_and_install():
@@ -42,9 +42,9 @@ if __name__ == "__main__":
     print("Welcome to the gizmo installer! We're going to get you set up in a jiffy.")
     print("To run this program, please confirm that you have a capable system, you have the option to run the script using an api, but if you want to use either the voice, ollama, or the rag you will NEED a capable system.")
     print("I have a 4070 super and it gets very slow if ollama and tts are running.")
-    print("Can your system handle large ai workloads? If you say no RAG, ollama, and voice will be disable by default. Y/N")
+    print("Can your system handle large ai workloads? If you say no, RAG, ollama, and voice will be disabled.")
     while True:
-        canithandleit = input()
+        canithandleit = input("Y/N:").upper()
         if canithandleit == "Y":
             print("Got it. What model do you want to by default?")
             print("1. OpenAI")
@@ -52,6 +52,7 @@ if __name__ == "__main__":
             print("3. Ollama")
             break
         elif canithandleit == "N":
+            set_rag_model("none")
             print("Got it. What model do you want to by default?")
             print("1. OpenAI")
             print("2. Hack Club (NO PERSONAL USE)")
@@ -67,21 +68,27 @@ if __name__ == "__main__":
             print("What is your OpenAI key?")
             openai_api_key = input("It is:")
             set_openai(True, "gpt-4", openai_api_key)
+            set_hackclub(False)
             break
         elif model == "2":
             model = "hc"
             set_hackclub(True)
+            set_openai(False)
             break
         elif model == "3":
             model = "ollama"
             break
         else:
             print("Please enter a number between 1 & 3.")
-    print("This config can be editted later in the config.json file.") 
+    print("Where do you want the mcp file?")
+    mcp_path = input("It is:")
+    set_mcp_config_path(mcp_path)
+    print("This config can be editted later in the config.json file.")
     print("Creating and installing pip packages in virtual environment...")
-    create_and_install()
-    print("\nPIP package install complete. To if you need to activate the virtual environment, run:")
+# "create_and_install()"
+    print("\nIF you need to activate the virtual environment, run:")
     if sys.platform == "win32":
         print(f"  .\\{VENV_NAME}\\Scripts\\activate")
     else:
         print(f"  source ./{VENV_NAME}/bin/activate")
+    print("The script should activate it by itself.")
