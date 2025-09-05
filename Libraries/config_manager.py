@@ -1,9 +1,15 @@
 # config_manager.py
 import json
 from pathlib import Path
+import os
+
+if os.path.exists("model/config.json"):
+    config_file = "model/config.json"  # Called from project root
+else:
+    config_file = "config.json"      # Called from RAG directory
 
 class ConfigManager:
-    def __init__(self, config_file="config.json"):
+    def __init__(self, config_file="model/config.json"):
         self.config_file = Path(config_file)
         self.default_config = {
             "openai": False,
