@@ -23,7 +23,7 @@ def create_and_install():
         pip_executable = os.path.join(VENV_NAME, "bin", "pip")
 
     # 3. Install the library
-    print(f"Installing '{LIBRARY_TO_INSTALL}' into '{VENV_NAME}'...")
+    print(f"Installing into '{VENV_NAME}'...")
     try:
         subprocess.run([pip_executable, "install", "-r", requirements_file], check=True)
         print(f"Packages installed successfully in virtual environment:'{VENV_NAME}'.")
