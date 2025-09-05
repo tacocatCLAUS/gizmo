@@ -62,24 +62,23 @@ if __name__ == "__main__":
 
     while True:
         model = input("Which one? (1-3):")
-        if model == 1:
+        if model == "1":
             model = "openai"
             print("What is your OpenAI key?")
             openai_api_key = input("It is:")
             set_openai(True, "gpt-4", openai_api_key)
             break
-        elif model == 2:
+        elif model == "2":
             model = "hc"
             set_hackclub(True)
             break
-        elif model == 3:
+        elif model == "3":
             model = "ollama"
             break
         else:
             print("Please enter a number between 1 & 3.")
-    
-    
-
+    print("This config can be editted later in the config.json file.") 
+    print("Creating and installing pip packages in virtual environment...")
     create_and_install()
     print("\nPIP package install complete. To if you need to activate the virtual environment, run:")
     if sys.platform == "win32":
