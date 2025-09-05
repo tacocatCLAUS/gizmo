@@ -4,7 +4,7 @@ import os
 from Libraries.config_manager import set_openai, set_hackclub, set_ollama, set_rag_model, set_mcp_config_path, set_openai_api_key, get_openai_api_key, enable_voice, enable_devmode, set_db_clear, enable_mcp, get_config, update_config
 # Define the virtual environment name and the library to install
 VENV_NAME = "genv"
-requirements_file = "requirements.txt"
+requirements_file = "model/requirements.txt"
 
 def create_and_install():
     # 1. Create the virtual environment
