@@ -12,6 +12,19 @@ import warnings
 import requests
 from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
+devmode = False
+
+def manager(message=None, pos_var=None):
+    """
+    If devmode is False, set the log level to None (no logs).
+    If devmode is True, print the given message if it is not None.
+    """
+    if devmode == False:
+        from yacana import LoggerManager
+        LoggerManager.set_log_level(None)
+    else:
+        if message is not None:
+            print(message + pos_var)
 
 # Add the parent directory to Python path to resolve model module import
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -48,7 +61,7 @@ class MCPServerManager:
         """Log messages if in dev mode"""
         if self.devmode:
             file = sys.stderr if error else sys.stdout
-            print(message, file=file)
+            manager(message, file=file)
     
     async def discover_all_tools(self) -> Dict[str, Any]:
         """Discover tools from all configured MCP servers"""
@@ -295,7 +308,7 @@ def get_existing_tools(skills_file: str) -> set:
 def update_skills_file(skills_file: str, all_tools: Dict[str, Any], new_tool_examples: str):
     """Update skills.txt with new tools and examples"""
     if not os.path.exists(skills_file):
-        print(f"ERROR: {skills_file} not found", file=sys.stderr)
+        manager(f"ERROR: {skills_file} not found", file=sys.stderr)
         return
     
     with open(skills_file, 'r', encoding='utf-8') as f:
@@ -316,7 +329,7 @@ def update_skills_file(skills_file: str, all_tools: Dict[str, Any], new_tool_exa
                     new_tools_list.append(f"- `{tool_name}`")
     
     if not new_tools_list:
-        print("No new tools to add to skills.txt")
+        manager("No new tools to add to skills.txt")
         return
     
     # Find where to insert new tools (after Available MCP Tools:)
@@ -327,7 +340,7 @@ def update_skills_file(skills_file: str, all_tools: Dict[str, Any], new_tool_exa
             break
     
     if tools_section_idx == -1:
-        print("ERROR: Could not find 'Available MCP Tools:' section", file=sys.stderr)
+        manager("ERROR: Could not find 'Available MCP Tools:' section", file=sys.stderr)
         return
     
     # Find where to insert (after last existing tool)
@@ -350,7 +363,7 @@ def update_skills_file(skills_file: str, all_tools: Dict[str, Any], new_tool_exa
             break
     
     if examples_idx == -1:
-        print("ERROR: Could not find 'Example Usage Patterns:' section", file=sys.stderr)
+        manager("ERROR: Could not find 'Example Usage Patterns:' section", file=sys.stderr)
         return
     
     # Insert new examples right after "Example Usage Patterns:" line
@@ -368,7 +381,8 @@ def update_skills_file(skills_file: str, all_tools: Dict[str, Any], new_tool_exa
     with open(skills_file, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
     
-    print(f"✅ Updated {skills_file} with {len(new_tools_list)} new tools and examples")
+    manager(f"✅ Updated {skills_file} with {len(new_tools_list)} new tools and examples")
+    print(f"Added {len(new_tools_list)} new tools.")
 
 
 def query_ai(prompt_text: str) -> str:
@@ -394,7 +408,7 @@ def query_ai(prompt_text: str) -> str:
         return f"Request Error: {str(e)}"
 
 
-async def main():
+async def main(devmode):
     """Main function"""
     # Get paths
     script_dir = os.path.dirname(__file__)
@@ -404,12 +418,12 @@ async def main():
     
     # Create server manager
     try:
-        manager = MCPServerManager(mcp_config_path)
-        # manager.devmode = True  # Enable for debugging
+        mcp_manager = MCPServerManager(mcp_config_path)
+        # mcp_manager.devmode = True  # Enable for debugging
         
         # Discover all tools
-        print("Discovering MCP tools...")
-        tools_data = await manager.discover_all_tools()
+        print("Looking for MCP tools...")
+        tools_data = await mcp_manager.discover_all_tools()
         
         # Get existing tools from skills.txt
         existing_tools = get_existing_tools(skills_file)
@@ -434,7 +448,7 @@ async def main():
             print("No new tools found. Skills file is up to date.")
             return
         
-        print(f"Found {total_new_count} new tools across {len(new_tools)} servers")
+        manager(f"Found {total_new_count} new tools across {len(new_tools)} servers")
         
         # Create prompt for AI with only new tools
         prompt = """You will be given a JSON object containing a list of tools with their names, descriptions, and inputSchemas.
@@ -461,19 +475,19 @@ Here are the NEW tools:
 """ + json.dumps(new_tools, indent=2)
         
         # Query AI for examples
-        print("Generating examples for new tools...")
+        manager("Generating examples for new tools...")
         ai_response = query_ai(prompt)
         
         # Update skills.txt
         update_skills_file(skills_file, tools_data, ai_response)
         
-        print("\n" + "="*60)
-        print("GENERATED EXAMPLES FOR NEW TOOLS:")
-        print("="*60)
-        print(ai_response)
+        manager("\n" + "="*60)
+        manager("GENERATED EXAMPLES FOR NEW TOOLS:")
+        manager("="*60)
+        manager(ai_response)
         
         # Rebuild model
-        print("\nRebuilding model...")
+        manager("\nRebuilding model...")
         build(
             os.path.join(parent_dir, "model", "system.txt"),
             os.path.join(parent_dir, "model", "skills.txt"),
@@ -481,20 +495,20 @@ Here are the NEW tools:
             "gizmo",
             "wizardlm2:7b"
         )
-        print("✅ Model rebuild complete")
+        print("Model rebuild complete")
                 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        manager(f"Error: {e}", file=sys.stderr)
         return 1
 
 
-def serverupdate():
+def serverupdate(devmode=False):
     """Entry point for the server update function"""
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     
     try:
-        asyncio.run(main())
+        asyncio.run(main(devmode))
     except KeyboardInterrupt:
         print("\nOperation cancelled by user")
     except Exception as e:

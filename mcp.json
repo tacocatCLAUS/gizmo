@@ -21,6 +21,18 @@
         "--data-dir",
         "/Users/CLAUS/Documents/GitHub/gizmo/RAG/chroma"
       ]
+    },
+    "MCP-wolfram-alpha": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/CLAUS/Documents/GitHub/gizmo/MCP/wolphram",
+        "run",
+        "MCP-wolfram-alpha"
+      ],
+      "env": {
+        "WOLFRAM_API_KEY": "AWG86T3YHA"
+      }
     }
   }
 }

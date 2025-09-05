@@ -87,7 +87,8 @@ class MCPServerConfig:
 
 def load_mcp_config(config_path: str = "mcp.json") -> Dict[str, MCPServerConfig]:
     """Load MCP server configurations from JSON file"""
-    serverupdate()
+    global devmode
+    serverupdate(devmode)
     config_file = Path(config_path)
     if not config_file.exists():
         # Create default config file
