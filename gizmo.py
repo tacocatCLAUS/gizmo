@@ -15,6 +15,7 @@ from RAG.populate_database import parse, clear_database
 from Libraries.filepicker import select_file
 from Libraries.voicehandling import clean_function_text
 from Libraries.svu import serverupdate
+from Libraries.config_manager import ConfigManager
 from Libraries.lagcleaner import clear_vram_and_reset as vramclear
 from voice.f5 import f5
 from RAG.get_embedding_function import get_embedding_function
@@ -31,25 +32,31 @@ import json
 import re
 os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+config_manager = ConfigManager()
+config = config_manager.load_config()
 
 # Config...uration
-devmode = False
-db_clear = False
-use_mcp = True
-voice = False
+devmode = config.get('devmode', False)
+db_clear = config.get('db_clear', True) 
+use_mcp = config.get('use_mcp', True)
+voice = config.get('voice', False)
+openai = config.get('openai', False)
+openai_model = config.get('openai_model', "gpt-3.5-turbo")
+hc = config.get('hc', False)
+hc_model = config.get('hc_model', "meta-llama/llama-4-maverick-17b-128e-instruct")
+rag_model = config.get('rag_model', "ollama")
+mcp_config_path = config.get('mcp_config_path', "mcp.json") 
+openai_api_key = config.get('openai_api_key', "")
 
-openai = False
-openai_model = "gpt-3.5-turbo"
 
-hc = False
-hc_model = "meta-llama/llama-4-maverick-17b-128e-instruct"
+openai_api_key = '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'
+
 
 system_prompt_path = Path("model/system.txt")
 system_prompt = system_prompt_path.read_text(encoding="utf-8")
 skills_prompt_path = Path("model/skills.txt")
-openai_api_key = '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'
 ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
-hc_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmoʰᶜ", "meta-llama/llama-4-maverick-17b-128e-instruct", system_prompt, endpoint="https://ai.hackclub.com", api_token="leave blank")
+hc_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmoʰᶜ", hc_model, system_prompt, endpoint="https://ai.hackclub.com", api_token="leave blank")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmoᴳᴾᵀ", openai_model, system_prompt, api_token=openai_api_key)
 agent = ollama_agent
 
