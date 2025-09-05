@@ -78,8 +78,6 @@ if __name__ == "__main__":
         else:
             print("Please enter a number between 1 & 3.")
     
-    
-
     create_and_install()
     print("\nPIP package install complete. To if you need to activate the virtual environment, run:")
     if sys.platform == "win32":
