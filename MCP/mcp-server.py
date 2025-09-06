@@ -60,27 +60,6 @@ async def list_tools() -> list[Tool]:
                 "required": ["url"]
             }
         ),
-        
-        # File Operations
-        Tool(
-            name="read_file",
-            description="Read contents of a local file",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "file_path": {
-                        "type": "string",
-                        "description": "Path to the file to read"
-                    },
-                    "encoding": {
-                        "type": "string",
-                        "description": "File encoding (default: utf-8)",
-                        "default": "utf-8"
-                    }
-                },
-                "required": ["file_path"]
-            }
-        ),
         Tool(
             name="write_file",
             description="Write content to a local file",
