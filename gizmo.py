@@ -45,7 +45,6 @@ openai_model = config.get('openai_model', "gpt-3.5-turbo")
 hc = config.get('hc', False)
 hc_model = config.get('hc_model', "meta-llama/llama-4-maverick-17b-128e-instruct")
 rag_model = config.get('rag_model', "ollama")
-mcp_config_path = config.get('mcp_config_path', "mcp.json") 
 openai_api_key = config.get('openai_api_key', "")
 
 
@@ -346,7 +345,7 @@ Continue your response naturally, incorporating this tool result. Don't repeat w
     voicecheck()
 
 def query_rag(request):
-    embedding_function = get_embedding_function(openai)
+    embedding_function = get_embedding_function(rag_model)
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
     results = db.similarity_search_with_score(request, k=5)
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
@@ -466,7 +465,8 @@ while True:
             dest_dir = os.path.join(os.getcwd(), "RAG", "data")
             os.makedirs(dest_dir, exist_ok=True)
             shutil.copy(file_path, dest_dir)
-            parse()
+            if rag_model != "none":
+                parse()
             filename = Path(file_path).name
             print(f"ʕ•ᴥ•ʔ I processed {filename}")
             addfile = 'N'
@@ -481,9 +481,23 @@ while True:
     # Reset stream state before each request
     stream_state["stream"] = "true"
     stream_state["buffer"] = ""
+    text_extensions = (
+    ".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml", ".ini", ".log",
+    ".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".html", ".htm",
+    ".css", ".scss", ".go", ".rs", ".rb", ".php", ".sh", ".bat", ".toml"
+)
+
     
-    if db_query == True:
+    if db_query == True and rag_model != "none" and file_path.endswith((".txt", ".pdf")):
         message = query_rag(request)
+        content_str = message.content if hasattr(message, 'content') else str(message)
+        handle_tool_execution(content_str, mcp_manager, request)
+    elif (db_query == True and rag_model == "none") or file_path.endswith((text_extensions)):
+        context_text = os.path.join(os.getcwd(), "RAG", "data", filename)
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+        prompt = prompt_template.format(context=context_text, question=request)
+        message = Task(prompt, agent, streaming_callback=streaming_callback).solve()
+        voicecheck()
         content_str = message.content if hasattr(message, 'content') else str(message)
         handle_tool_execution(content_str, mcp_manager, request)
     else:
@@ -491,7 +505,6 @@ while True:
         voicecheck()
         content_str = message.content if hasattr(message, 'content') else str(message)
         handle_tool_execution(content_str, mcp_manager, request)
-
 if mcp_manager:
     mcp_manager.shutdown_all()
 

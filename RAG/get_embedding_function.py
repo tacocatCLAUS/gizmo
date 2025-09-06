@@ -1,11 +1,12 @@
 from langchain_ollama import OllamaEmbeddings
-from langchain_aws import BedrockEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
-def get_embedding_function(openai):
-    if openai == True:
-        # tbd
-        embeddings = OllamaEmbeddings(model="nomic-embed-text")
+# from langchain_aws import BedrockEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
+
+def get_embedding_function(rag_model):
+    if rag_model == "openai":
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
     else:
         embeddings = OllamaEmbeddings(model="nomic-embed-text")
     return embeddings

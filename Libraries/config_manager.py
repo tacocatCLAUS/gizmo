@@ -17,8 +17,7 @@ class ConfigManager:
             "db_clear": True,
             "use_mcp": True,
             "voice": False,
-            "rag_model": "ollama",
-            "mcp_config_path": "mcp.json"
+            "rag_model": "ollama"
         }
         self.load_config()
     
@@ -80,11 +79,6 @@ def set_rag_model(model="ollama"):
     """Set the RAG model (ollama or openai)"""
     config_manager = ConfigManager()
     return config_manager.set(rag_model=model)
-
-def set_mcp_config_path(path="mcp.json"):
-    """Set the MCP configuration file path"""
-    config_manager = ConfigManager()
-    return config_manager.set(mcp_config_path=path)
 
 def set_openai_api_key(api_key):
     """Set the OpenAI API key"""

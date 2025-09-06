@@ -12,6 +12,14 @@ def select_file():
     root.destroy()  # Close the hidden Tkinter window
     return file_path
 
+def select_config_dir():
+    """Opens a file dialog and returns the selected file path."""
+    root = tk.Tk()
+    root.withdraw()  # Hide the main Tkinter window
+    directory = filedialog.askdirectory(title='Select a Directory')
+    root.destroy()  # Close the hidden Tkinter window
+    return directory
+
 if __name__ == "__main__":
     selected_file = select_file()
     if selected_file:
