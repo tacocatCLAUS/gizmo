@@ -9,10 +9,7 @@ from model.modelbuilder import build
 VENV_NAME = ".genv"
 requirements_file = "model/requirements.txt"
 
-if sys.platform == "win32":
-    pip_executable = os.path.join(VENV_NAME, "Scripts", "pip.exe")
-else:  # Linux/macOS
-    pip_executable = os.path.join(VENV_NAME, "bin", "pip")
+pip_executable = "pip"
 
 openai_api_key = ""
 
@@ -23,19 +20,10 @@ def should_install_bitsandbytes():
 
 def create_and_install():
     # 1. Create the virtual environment
-    print(f"Creating virtual environment: {VENV_NAME}...")
-    try:
-        subprocess.run([sys.executable, "-m", "venv", VENV_NAME], check=True)
-        print(f"✅ Virtual environment '{VENV_NAME}' created successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Error creating virtual environment: {e}")
-        sys.exit(1)
+
 
     # 2. Determine the pip executable path within the virtual environment
-    if sys.platform == "win32":
-        pip_executable = os.path.join(VENV_NAME, "Scripts", "pip.exe")
-    else:  # Linux/macOS
-        pip_executable = os.path.join(VENV_NAME, "bin", "pip")
+
 
     # 3. Install from requirements.txt
     print(f"📦 Installing packages from '{requirements_file}'...")
@@ -186,23 +174,17 @@ if __name__ == "__main__":
     else:
         print("Input not Y/N, try again.")
     print("These settings can be editted later in the config.json file.")
-    print("Creating and installing pip packages in virtual environment...")
+    print("Creating and installing pip packages...")
     create_and_install()
     if should_install_bitsandbytes():
         print("🧠 Detected supported system for bitsandbytes. Installing...")
         try:
-            subprocess.run([pip_executable, "install", "bitsandbytes>0.37.0"], check=True)
+            subprocess.run(["pip", "install", "bitsandbytes>0.37.0"], check=True)
             print("✅ bitsandbytes installed successfully.")
         except subprocess.CalledProcessError as e:
             print(f"❌ Failed to install bitsandbytes: {e}")
     else:
         print("⚠️ Skipping bitsandbytes: Not supported on Apple Silicon macOS.")
-    print("\nIf you want to activate the virtual environment, run:")
-    if sys.platform == "win32":
-        print(f"  .\\{VENV_NAME}\\Scripts\\activate")
-    else:
-        print(f"  source ./{VENV_NAME}/bin/activate")
-    print("But it should be done automatically when you run gizmo.py")
     print("RUNNING GIZMO...")
-    subprocess.run([sys.executable, "gizmo.py"], check=True)
+    subprocess.run(['python', "gizmo.py"], check=True)
     

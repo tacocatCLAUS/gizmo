@@ -58,6 +58,8 @@ ollama_agent = OllamaAgent("ʕ•ᴥ•ʔ Gizmo", "gizmo")
 hc_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmoʰᶜ", hc_model, system_prompt, endpoint="https://ai.hackclub.com", api_token="leave blank")
 openai_agent = OpenAiAgent("ʕ•ᴥ•ʔ Gizmoᴳᴾᵀ", openai_model, system_prompt, api_token=openai_api_key)
 agent = ollama_agent
+file_path = ""
+filename = ""
 
 # Global state - need to accumulate chunks to detect split emoji
 stream_state = {"stream": "true", "buffer": ""}
