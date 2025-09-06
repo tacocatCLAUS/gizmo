@@ -2,7 +2,7 @@ import subprocess
 import platform
 import sys
 import os
-from Libraries.config_manager import set_openai, set_hackclub, set_ollama, set_rag_model, set_mcp_config_path, set_openai_api_key, get_openai_api_key, enable_voice, enable_devmode, set_db_clear, enable_mcp, get_config, update_config
+from Libraries.config_manager import set_openai, set_hackclub, set_ollama, set_rag_model, set_openai_api_key, get_openai_api_key, enable_voice, enable_devmode, set_db_clear, enable_mcp, get_config, update_config
 from Libraries.filepicker import select_config_dir
 from model.modelbuilder import build
 # Define the virtual environment name and the library to install
@@ -130,7 +130,7 @@ if __name__ == "__main__":
             subprocess.run(['ollama', 'pull', 'wizardlm2:7b'], check=True)
             print("wizardlm2:7b pulled.")
             print("Building gizmo model...")
-            build()
+            build(SYSTEM_FILE='model/system.txt', SKILLS_FILE='model/skills.txt', MODELFILE='model/Modelfile', MODEL_NAME='gizmo', BASE_MODEL='wizardlm2:7b')
             print("gizmo model built.")
             break
         else:
@@ -157,7 +157,6 @@ if __name__ == "__main__":
     while True:
         use_mcp = input("Y/N:").upper()
         if use_mcp == "Y":
-            set_mcp_config_path("mcp.json")
             enable_mcp(True)
             print("MCP enabled.")
             break

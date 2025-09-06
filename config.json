@@ -8,5 +8,5 @@
   "db_clear": false,
   "use_mcp": true,
   "voice": false,
-  "rag_model": "ollama"
+  "rag_model": "none"
 }
