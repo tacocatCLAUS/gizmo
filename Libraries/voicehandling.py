@@ -243,7 +243,7 @@ def example_function(input_data):
         difference = value2 - value1
     
     api_result = fetch_data() ⚡️random_name({"endpoint": "/api/data"})
-    return result 🎉
+    return result 🎉 = = = = = = = 
 
 
     hola Hola  i love the NYPD and i love cheese π(E=mc²) is the best formula
