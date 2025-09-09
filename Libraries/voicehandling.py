@@ -72,6 +72,11 @@ def replace_symbols(text):
         '@': ' at ',      # Replace @ with at
         '&': ' and ',     # Replace & with and
         '/': ' slash ',   # Replace / with slash
+
+        # Words
+        'Hola': 'oh lah',
+        'hola': 'oh lah',
+
         
         # Mathematical symbols
         '+': ' plus ',    # Addition
@@ -239,6 +244,9 @@ def example_function(input_data):
     
     api_result = fetch_data() ⚡️random_name({"endpoint": "/api/data"})
     return result 🎉
+
+
+    hola Hola  i love the NYPD and i love cheese π(E=mc²) is the best formula
 """
 
     print("Original function:")
