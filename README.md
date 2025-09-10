@@ -8,55 +8,21 @@ Installing is easy. Just install [Ollama](https://ollama.com/),
 and clone the repo!
 
 ```shell
-packagemanager install awesome-project
-awesome-project start
-awesome-project "Do something!"  # prints "Nah."
+git clone https://github.com/tacocatCLAUS/gizmo.git
+cd gizmo
+python setup.py
+python gizmo.py
 ```
 
-Here you should say what actually happens when you execute the code above.
-
-### Initial Configuration
-
-Some projects require initial configuration (e.g. access tokens or keys, `npm i`).
-This is the section where you would document those requirements.
+This will install everything necessary and have you set the configuration.
 
 ## Developing
 
-Here's a brief intro about what a developer must do in order to start developing
-the project further:
-
+If you want to help with development first of all THANK YOU! But all you need to do is install the project as shown above.
+Running setup.py will install from model/requirements.txt but if you want to do this yourself just run: 
 ```shell
-git clone https://github.com/your/awesome-project.git
-cd awesome-project/
-packagemanager install
+pip install -r model/requirements.txt
 ```
-
-And state what happens step-by-step.
-
-### Building
-
-If your project needs some additional steps for the developer to build the
-project after some code changes, state them here:
-
-```shell
-./configure
-make
-make install
-```
-
-Here again you should state what actually happens when the code above gets
-executed.
-
-### Deploying / Publishing
-
-In case there's some step you have to take that publishes this project to a
-server, this is the right time to state it.
-
-```shell
-packagemanager deploy awesome-project -s server.com -u username -p password
-```
-
-And again you'd need to tell what the previous code actually does.
 
 ## Features
 
