@@ -4,7 +4,8 @@ Ai is everywhere. Claude code is at over 33,00 ✩ but none of it is local. Gizm
 
 ## Installing / Getting started
 
-Installing is easy. Just install (Ollama)[https://ollama.com/]
+Installing is easy. Just install [Ollama](https://ollama.com/),
+and clone the repo!
 
 ```shell
 packagemanager install awesome-project
