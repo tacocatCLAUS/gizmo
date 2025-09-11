@@ -76,6 +76,8 @@ def replace_symbols(text):
         # Words
         'Hola': 'oh lah',
         'hola': 'oh lah',
+        '<think>': '',
+        '</think>': '',
 
         
         # Mathematical symbols

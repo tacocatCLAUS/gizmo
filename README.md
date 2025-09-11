@@ -36,7 +36,7 @@ What's all the bells and whistles this project can perform?
 Here you should write what are all of the configurations a user can enter when
 using the project.
 
-#### Argument 1
+#### openai
 Type: `String`  
 Default: `'default value'`
 
