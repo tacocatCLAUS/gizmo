@@ -495,7 +495,9 @@ while True:
         content_str = message.content if hasattr(message, 'content') else str(message)
         handle_tool_execution(content_str, mcp_manager, request)
     elif (db_query == True and rag_model == "none") or file_path.endswith((text_extensions)):
-        context_text = os.path.join(os.getcwd(), "RAG", "data", filename)
+        file_path_full = os.path.join(os.getcwd(), "RAG", "data", filename)
+        with open(file_path_full, "r", encoding="utf-8") as f:
+            context_text = f.read()
         prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
         prompt = prompt_template.format(context=context_text, question=request)
         message = Task(prompt, agent, streaming_callback=streaming_callback).solve()
