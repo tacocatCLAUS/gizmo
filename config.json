@@ -4,8 +4,8 @@
   "openai_api_key": "",
   "hc": true,
   "hc_model": "meta-llama/llama-4-maverick-17b-128e-instruct",
-  "devmode": true,
-  "db_clear": false,
+  "devmode": false,
+  "db_clear": true,
   "use_mcp": true,
   "voice": false,
   "rag_model": "none"

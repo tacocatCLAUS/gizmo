@@ -348,19 +348,30 @@ Continue your response naturally, incorporating this tool result. Don't repeat w
 
 def query_rag(request):
     embedding_function = get_embedding_function(rag_model)
-    db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
-    results = db.similarity_search_with_score(request, k=5)
-    context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
-    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt = prompt_template.format(context=context_text, question=request)
-    message = Task(prompt, agent, streaming_callback=streaming_callback).solve()
-    response_text = message
-    sources = [doc.metadata.get("id", None) for doc, _ in results]
-    formatted_response = f"\nSources: {sources}"
-    if stream_state["stream"] == "true":
-        print(formatted_response)
-    voicecheck()
-    return response_text
+    db = None
+    try:
+        db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+        results = db.similarity_search_with_score(request, k=5)
+        context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+        prompt = prompt_template.format(context=context_text, question=request)
+        message = Task(prompt, agent, streaming_callback=streaming_callback).solve()
+        response_text = message
+        sources = [doc.metadata.get("id", None) for doc, _ in results]
+        formatted_response = f"\nSources: {sources}"
+        if stream_state["stream"] == "true":
+            print(formatted_response)
+        voicecheck()
+        return response_text
+    finally:
+        # Explicitly close the database connection
+        if db is not None:
+            try:
+                # Force close any open connections
+                db._client.reset()
+            except:
+                pass  # Ignore any errors during cleanup
+            del db
 
 def handle_tool_execution(response_content, mcp_manager, original_request):
     """Handle tool execution if a tool call was detected"""

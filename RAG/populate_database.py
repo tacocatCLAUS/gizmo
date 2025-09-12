@@ -110,25 +110,35 @@ def split_markdown(documents: list[Document]):
     return text_splitter.split_documents(documents)
 
 def add_to_chroma(chunks: list[Document]):
-    db = Chroma(
-        persist_directory=CHROMA_PATH, embedding_function=get_embedding_function(True)
-    )
+    db = None
+    try:
+        db = Chroma(
+            persist_directory=CHROMA_PATH, embedding_function=get_embedding_function(True)
+        )
 
-    chunks_with_ids = calculate_chunk_ids(chunks)
+        chunks_with_ids = calculate_chunk_ids(chunks)
 
-    existing_items = db.get(include=[])  # IDs are always included by default
-    existing_ids = set(existing_items["ids"])
-    manager(f"[SYSTEM] Number of existing documents in DB: {len(existing_ids)}")
+        existing_items = db.get(include=[])  # IDs are always included by default
+        existing_ids = set(existing_items["ids"])
+        manager(f"[SYSTEM] Number of existing documents in DB: {len(existing_ids)}")
 
-    new_chunks = []
-    for chunk in chunks_with_ids:
-        if chunk.metadata["id"] not in existing_ids:
-            new_chunks.append(chunk)
+        new_chunks = []
+        for chunk in chunks_with_ids:
+            if chunk.metadata["id"] not in existing_ids:
+                new_chunks.append(chunk)
 
-    if len(new_chunks):
-        manager(f"[SYSTEM] Adding new chunks: {len(new_chunks)}")
-        new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
-        db.add_documents(new_chunks, ids=new_chunk_ids)
+        if len(new_chunks):
+            manager(f"[SYSTEM] Adding new chunks: {len(new_chunks)}")
+            new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
+            db.add_documents(new_chunks, ids=new_chunk_ids)
+    finally:
+        # Properly close the database connection
+        if db is not None:
+            try:
+                db._client.reset()
+            except:
+                pass
+            del db
 
 def calculate_chunk_ids(chunks):
     # This will create IDs like "data/monopoly.pdf:6:2"
@@ -161,36 +171,90 @@ def clear_database():
     if os.path.exists(CHROMA_PATH):
         import time
         import gc
+        import subprocess
+        import platform
+        try:
+            import psutil
+        except ImportError:
+            psutil = None
         
         # Force garbage collection to close any open database connections
         gc.collect()
         
-        max_retries = 5
+        max_retries = 10
         retry_delay = 0.5
+        
+        # Try to find and close processes using the SQLite file
+        sqlite_file = os.path.join(CHROMA_PATH, "chroma.sqlite3")
         
         for attempt in range(max_retries):
             try:
+                # On Windows, try to find processes using the SQLite file
+                if platform.system() == "Windows" and os.path.exists(sqlite_file):
+                    try:
+                        # Use handle.exe if available, otherwise continue with basic retry
+                        result = subprocess.run(["handle.exe", "-a", sqlite_file], 
+                                              capture_output=True, text=True, timeout=10)
+                        if result.returncode == 0 and result.stdout:
+                            manager(f"[SYSTEM] Found processes using database file, attempting to resolve...")
+                    except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+                        # handle.exe not available or failed, continue with regular retry
+                        pass
+                
+                # Try removing individual files first, then the directory
+                if os.path.exists(sqlite_file):
+                    try:
+                        os.chmod(sqlite_file, 0o666)  # Ensure write permissions
+                        os.remove(sqlite_file)
+                        manager(f"[SYSTEM] Successfully removed SQLite database file")
+                    except PermissionError:
+                        # If we can't remove the SQLite file, try waiting a bit more
+                        if attempt < max_retries - 1:
+                            manager(f"[SYSTEM] SQLite file locked, waiting longer... (attempt {attempt + 1}/{max_retries})")
+                            time.sleep(retry_delay)
+                            retry_delay = min(retry_delay * 1.5, 5.0)  # Cap maximum delay
+                            gc.collect()
+                            continue
+                        else:
+                            raise
+                
+                # Try to remove the entire directory
                 shutil.rmtree(CHROMA_PATH)
+                manager(f"[SYSTEM] Successfully cleared database directory")
                 break
+                
             except PermissionError as e:
                 if attempt < max_retries - 1:
-                    manager(f"[SYSTEM] Database locked (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                    manager(f"[SYSTEM] Database locked (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay:.1f}s...")
                     time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
-                    gc.collect()  # Try garbage collection again
+                    retry_delay = min(retry_delay * 1.5, 5.0)  # Cap maximum delay
+                    gc.collect()
                 else:
                     manager(f"[SYSTEM] Failed to clear database after {max_retries} attempts: {str(e)}")
-                    manager(f"[SYSTEM] You may need to close any applications using the ChromaDB and try again.")
-                    raise e
+                    manager(f"[SYSTEM] The database file may be in use by another process.")
+                    manager(f"[SYSTEM] Please ensure no other instances of the application are running and try again.")
+                    # Don't raise the exception, just create a new directory alongside
+                    import uuid
+                    backup_path = f"{CHROMA_PATH}_backup_{uuid.uuid4().hex[:8]}"
+                    try:
+                        shutil.move(CHROMA_PATH, backup_path)
+                        manager(f"[SYSTEM] Moved locked database to {backup_path}")
+                    except:
+                        manager(f"[SYSTEM] Could not move locked database. Continuing with existing data.")
+                    break
         
+        # Ensure the directory exists
         os.makedirs(CHROMA_PATH, exist_ok=True)
         
+        # Handle data directory with same robust approach
         if os.path.exists(DATA_PATH):
             try:
                 shutil.rmtree(DATA_PATH)
                 os.makedirs(DATA_PATH, exist_ok=True)
+                manager(f"[SYSTEM] Successfully cleared data directory")
             except PermissionError as e:
                 manager(f"[SYSTEM] Warning: Could not clear data directory: {str(e)}")
+                manager(f"[SYSTEM] Data directory may contain locked files.")
 
 if __name__ == "__main__":
     parse()
