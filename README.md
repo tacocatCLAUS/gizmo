@@ -36,7 +36,7 @@ What's all the bells and whistles this project can perform?
 Here you should write what are all of the configurations a user can enter when
 using the project.
 
-```shell
+```json
 {
   "openai": false,
   "openai_model": "gpt-3.5-turbo",
@@ -50,7 +50,6 @@ using the project.
   "rag_model": "none"
 }
 ```
-<img width="1360" height="820" alt="carbon" src="https://github.com/user-attachments/assets/299e47b4-255c-4af7-bbb9-915ec94e23f5" />
 
 
 #### openai
