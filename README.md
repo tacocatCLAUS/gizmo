@@ -1,6 +1,6 @@
 # Gizmo
 > Your Local Cli Assistant
-Ai is everywhere. Claude code is at over 33,00 ✩ but none of it is local. Gizmo is a completely-local, mcp-enabled, personal assistant that can even talk! Just come with good hardware and some MCP servers. brief description of your project, what it is used for and how does life get.
+Gizmo is your local ai assistant. Claude code is at over 33,000 ✩ but not a bit is local. Gizmo is a completely-local, mcp-enabled, personal assistant that can even talk! Just come with good hardware and some MCP servers. Youll be able to tell it to turn off your light in no time!
 
 ## Installing / Getting started
 
@@ -35,6 +35,22 @@ What's all the bells and whistles this project can perform?
 
 Here you should write what are all of the configurations a user can enter when
 using the project.
+
+```shell
+{
+  "openai": false,
+  "openai_model": "gpt-3.5-turbo",
+  "openai_api_key": "",
+  "hc": false,
+  "hc_model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+  "devmode": false,
+  "db_clear": true,
+  "use_mcp": true,
+  "voice": false,
+  "rag_model": "none"
+}
+```
+
 
 #### openai
 Type: `String`  
