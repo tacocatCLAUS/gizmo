@@ -50,6 +50,7 @@ using the project.
   "rag_model": "none"
 }
 ```
+<img width="1360" height="820" alt="carbon" src="https://github.com/user-attachments/assets/299e47b4-255c-4af7-bbb9-915ec94e23f5" />
 
 
 #### openai
