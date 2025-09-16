@@ -6,6 +6,7 @@ Gizmo is your local ai assistant. Claude code is at over 33,000 ✩ but not a bi
 
 Installing is easy. Just install [Ollama](https://ollama.com/),
 and clone the repo!
+Keep in mind that this project takes up about 5 GB of space. If you are demoing just delete the repo and uninstall the pip package.
 
 ```shell
 git clone https://github.com/tacocatCLAUS/gizmo.git
@@ -25,10 +26,10 @@ pip install -r model/requirements.txt
 
 ## Features
 
-What's all the bells and whistles this project can perform?
-* What's the main functionality
-* You can also do another thing
-* If you get really randy, you can even do this
+* Full MCP support using the same system as Claude
+* Ollama and OpenAI support
+* Smart RAG handling so you can upload most documents and it will use them accordingly.
+* Even realistic voice generation using F5-TTS
 
 ## Configuration
 
