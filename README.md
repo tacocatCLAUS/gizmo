@@ -5,8 +5,8 @@ Gizmo is your local ai assistant. Claude code is at over 33,000 ✩ but not a bi
 ## Installing / Getting started
 
 Installing is easy. Just install [Ollama](https://ollama.com/),
-and clone the repo!
-Keep in mind that this project takes up about 5 GB of space. If you are demoing just delete the repo and uninstall the pip package.
+and either download the release or clone the repo!
+Keep in mind that this project takes up about 5 GB of space. If you are demoing just delete the repo and uninstall the pip packages.
 
 ```shell
 git clone https://github.com/tacocatCLAUS/gizmo.git
