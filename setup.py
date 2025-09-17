@@ -186,5 +186,5 @@ if __name__ == "__main__":
     else:
         print("⚠️ Skipping bitsandbytes: Not supported on Apple Silicon macOS.")
     print("RUNNING GIZMO...")
-    subprocess.run(['python', "gizmo.py"], check=True)
+
     
