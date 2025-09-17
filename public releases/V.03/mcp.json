@@ -1,4 +1,4 @@
-{
+{// Some preinstalled mcp servers.
   "mcpServers": {
     "local-server": {
       "command": "python",
@@ -7,32 +7,6 @@
     "ddg-search": {
       "command": "python",
       "args": ["MCP/duck.py"]
-    },
-    "scryfall": {
-      "command": "npx",
-      "args": ["scryfall-mcp-server"]
-    },
-    "chroma": {
-      "command": "uvx",
-      "args": [
-        "chroma-mcp",
-        "--client-type",
-        "persistent",
-        "--data-dir",
-        "/Users/CLAUS/Documents/GitHub/gizmo/RAG/chroma"
-      ]
-    },
-    "MCP-wolfram-alpha": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/Users/CLAUS/Documents/GitHub/gizmo/MCP/wolphram",
-        "run",
-        "MCP-wolfram-alpha"
-      ],
-      "env": {
-        "WOLFRAM_API_KEY": "AWG86T3YHA"
-      }
     }
   }
 }

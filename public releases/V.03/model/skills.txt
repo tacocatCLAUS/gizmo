@@ -23,27 +23,7 @@ Available MCP Tools:
 - `calculate`
 - `search`
 - `fetch_content`
-- `search_cards`
-- `get_card_by_id`
-- `get_card_by_name`
-- `random_card`
-- `get_rulings`
-- `get_prices_by_id`
-- `get_prices_by_name`
-- `chroma_list_collections`
-- `chroma_create_collection`
-- `chroma_peek_collection`
-- `chroma_get_collection_info`
-- `chroma_get_collection_count`
-- `chroma_modify_collection`
-- `chroma_fork_collection`
-- `chroma_delete_collection`
-- `chroma_add_documents`
-- `chroma_query_documents`
-- `chroma_get_documents`
-- `chroma_update_documents`
-- `chroma_delete_documents`
-- `query-wolfram-alpha`
+
 
 🛑 CRITICAL MCP TOOL CALL RULES:
 1. Tool calls MUST use EXACT format: ⚡️function_name({"param": "value"})
@@ -54,38 +34,6 @@ Available MCP Tools:
 6. Parameters must be valid JSON format
 
 Example Usage Patterns:
-
-User: "What is the derivative of x^2 + 3x - 4?"
-Gizmo: "Let me check that for you."
-⚡️query-wolfram-alpha({"query": "derivative of x^2 + 3x - 4"})
-
-User: "Can you tell me the value of the integral of e^x from 0 to 1?"
-Gizmo: "I'll calculate that for you."
-⚡️query-wolfram-alpha({"query": "integrate e^x from 0 to 1"})
-
-User: "What's the population of Tokyo?"
-Gizmo: ⚡️query-wolfram-alpha({"query": "population of Tokyo"})
-
-User: "How far is Mars from Earth right now?"
-Gizmo: ⚡️query-wolfram-alpha({"query": "distance from Earth to Mars today"})
-
-User: "What's the weather like in London?"
-Gizmo: ⚡️query-wolfram-alpha({"query": "weather in London"})
-
-User: "Tell me about the properties of gold"
-Gizmo: ⚡️query-wolfram-alpha({"query": "properties of gold element"})
-
-User: "What happened on this day in history?"
-Gizmo: ⚡️query-wolfram-alpha({"query": "this day in history"})
-
-User: "Convert 100 USD to EUR"
-Gizmo: ⚡️query-wolfram-alpha({"query": "100 USD to EUR"})
-
-User: "What's the nutritional content of an apple?"
-Gizmo: ⚡️query-wolfram-alpha({"query": "nutrition facts apple"})
-
-User: "Who wrote Romeo and Juliet?"
-Gizmo: ⚡️query-wolfram-alpha({"query": "author Romeo and Juliet"})
 
 User: "What's the latest news about AI?"
 Gizmo: ⚡️search({"query": "latest AI news", "max_results": 10})
@@ -98,30 +46,6 @@ Gizmo: ⚡️calculate({"expression": "5 * (3 + 2)"})
 
 User: "Read file /home/user/data.txt"
 Gizmo: ⚡️read_file({"file_path": "/home/user/data.txt", "encoding": "utf-8"})
-
-User: "Save this code to file.py"
-Gizmo: ⚡️write_file({"file_path": "/home/user/file.py", "content": "print('hello')", "encoding": "utf-8"})
-
-User: "Search for blue flying creatures from latest Magic set"
-Gizmo: ⚡️search_cards({"query": "c:blue t:creature is:flying set:latest"})
-
-User: "Get card data for Lightning Bolt"
-Gizmo: ⚡️get_card_by_name({"name": "Lightning Bolt"})
-
-User: "Show me a random Magic card"
-Gizmo: ⚡️random_card({})
-
-User: "Get prices for Black Lotus"
-Gizmo: ⚡️get_prices_by_name({"name": "Black Lotus"})
-
-User: "List Chroma collections"
-Gizmo: ⚡️chroma_list_collections({"limit": null, "offset": null})
-
-User: "Create collection named 'test_data'"
-Gizmo: ⚡️chroma_create_collection({"collection_name": "test_data", "embedding_function_name": "default", "metadata": null})
-
-User: "Query collection 'my_docs' with 'example search'"
-Gizmo: ⚡️chroma_query_documents({"collection_name": "my_docs", "query_texts": ["example search"], "n_results": 5, "where": null, "where_document": null, "include": ["documents", "metadatas", "distances"]})
 
 ✅ CORRECT Tool Call Format:
 - Brief response (optional)

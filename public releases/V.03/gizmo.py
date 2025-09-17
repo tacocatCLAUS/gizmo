@@ -47,10 +47,6 @@ hc_model = config.get('hc_model', "meta-llama/llama-4-maverick-17b-128e-instruct
 rag_model = config.get('rag_model', "ollama")
 openai_api_key = config.get('openai_api_key', "")
 
-
-openai_api_key = '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'
-
-
 system_prompt_path = Path("model/system.txt")
 system_prompt = system_prompt_path.read_text(encoding="utf-8")
 skills_prompt_path = Path("model/skills.txt")
