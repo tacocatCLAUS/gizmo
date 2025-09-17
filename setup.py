@@ -111,8 +111,8 @@ if __name__ == "__main__":
             break
         elif model == "2":
             model = "hc"
-            set_hackclub(True)
             set_openai(False)
+            set_hackclub()
             break
         elif model == "3":
             model = "ollama"

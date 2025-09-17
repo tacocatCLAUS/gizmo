@@ -2,11 +2,11 @@
   "openai": false,
   "openai_model": "gpt-3.5-turbo",
   "openai_api_key": "",
-  "hc": true,
-  "hc_model": "openai/gpt-oss-20b",
+  "hc": false,
+  "hc_model": "meta-llama/llama-4-maverick-17b-128e-instruct",
   "devmode": false,
   "db_clear": true,
   "use_mcp": true,
   "voice": false,
   "rag_model": "none"
-} 
+}
