@@ -16,6 +16,7 @@ python gizmo.py
 ```
 
 This will install everything necessary and have you set the configuration.
+Keepbin mind that this scriptbis still in development so you should go over the config after it is run.
 
 ## Developing
 All you need to do is install the project as shown above.
