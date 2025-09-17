@@ -185,6 +185,6 @@ if __name__ == "__main__":
             print(f"❌ Failed to install bitsandbytes: {e}")
     else:
         print("⚠️ Skipping bitsandbytes: Not supported on Apple Silicon macOS.")
-    print("RUNNING GIZMO...")
+    print("Setup complete. Check over config.json and then run gizmo.py")
 
     
