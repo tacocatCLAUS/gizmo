@@ -2,7 +2,7 @@
 > Your Local Cli Assistant
 Gizmo is your local ai assistant. Claude code is at over 33,000 ✩ but not a bit is local. Gizmo is a completely-local, mcp-enabled, personal assistant that can even talk! Just come with good hardware and some MCP servers. Youll be able to tell it to turn off your light in no time!
 
-This has been coded around and works the best with the wizard llm ollama model. All api connections are an afterthough and do not work perfectly.
+This has been coded around and works the best with the wizard llm ollama model. All api connections are an afterthought and do not work perfectly (no mcp). Changing the ollama model might have side effects as well. If you wnat to suggest changes and supports for different models look into the model folder.
 
 ## Installing / Getting started
 
