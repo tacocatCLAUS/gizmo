@@ -1,8 +1,6 @@
-<img width="600" height="400" alt="snippixbymnn (1)" src="https://github.com/user-attachments/assets/fba19b54-6731-40c3-9912-6c017db0418b" />
-<div align="center">
-<img align="center" width="50%" src="https://github.com/user-attachments/assets/51b8f028-2d25-4664-b4a1-44dcf9490140" />
 
-### netshow · interactive, process-aware network monitoring for your terminal
+<div align="center">
+<img align="center" width="50%" alt="snippixbymnn" src="https://github.com/user-attachments/assets/fba19b54-6731-40c3-9912-6c017db0418b" />
 
 ### Gizmo · local, mcp, assistant
 Gizmo is your local ai assistant. Claude code is at over 33,000 ✩ but not a bit is local. Gizmo is a completely-local, mcp-enabled, personal assistant that can even talk! Just come with good hardware and some MCP servers. Youll be able to tell it to turn off your light in no time!
